@@ -799,7 +799,7 @@ module controllogic (
   output ioR,
   output stPC,
   output Reti,
-  output rand
+  output rand_pin
 );
   wire s0;
   wire s1;
@@ -840,7 +840,7 @@ module controllogic (
   assign ioR = ((A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & F));
   assign stPC = (s5 & B & C & D & s3 & F & s4);
   assign Reti = (A & s0 & s1 & s2 & E & s6 & s4);
-  assign rand = (A & s0 & s1 & s2 & E & F & G);
+  assign rand_pin = (A & s0 & s1 & s2 & E & F & G);
 endmodule
 
 // Arithmetic shift right. An unsigned division by two. 
@@ -1051,7 +1051,7 @@ module tt_um_smallscpu (
   wire [15:0] s14;
   wire [15:0] Din;
   wire [15:0] s15;
-  wire [15:0] RandomNUM;
+  wire [15:0] rand_pinomNUM;
   wire [15:0] s16;
   wire [1:0] s17;
   wire s18;
@@ -1175,7 +1175,7 @@ module tt_um_smallscpu (
   wire s119;
   wire s120;
   wire stPC;
-  wire RandomNUMSel;
+  wire rand_pinomNUMSel;
   wire ioR;
   wire [6:0] s121;
   wire [6:0] s122;
@@ -1293,7 +1293,7 @@ module tt_um_smallscpu (
     .in_2( Din ),
     .in_3( s15 ),
     .in_4( 16'b0 ),
-    .in_5( RandomNUM ),
+    .in_5( rand_pinomNUM ),
     .in_6( 16'b0 ),
     .in_7( 16'b0 ),
     .out( s16 )
@@ -1656,22 +1656,22 @@ module tt_um_smallscpu (
     .\< ( s57 )
   );
   assign s89 = (s100 ^ (s110 ^ (s114 ^ s118)));
-  assign RandomNUM[0] = s90;
-  assign RandomNUM[1] = s92;
-  assign RandomNUM[2] = s94;
-  assign RandomNUM[3] = s96;
-  assign RandomNUM[4] = s98;
-  assign RandomNUM[5] = s100;
-  assign RandomNUM[6] = s102;
-  assign RandomNUM[7] = s104;
-  assign RandomNUM[8] = s106;
-  assign RandomNUM[9] = s108;
-  assign RandomNUM[10] = s110;
-  assign RandomNUM[11] = s112;
-  assign RandomNUM[12] = s114;
-  assign RandomNUM[13] = s116;
-  assign RandomNUM[14] = s118;
-  assign RandomNUM[15] = s120;
+  assign rand_pinomNUM[0] = s90;
+  assign rand_pinomNUM[1] = s92;
+  assign rand_pinomNUM[2] = s94;
+  assign rand_pinomNUM[3] = s96;
+  assign rand_pinomNUM[4] = s98;
+  assign rand_pinomNUM[5] = s100;
+  assign rand_pinomNUM[6] = s102;
+  assign rand_pinomNUM[7] = s104;
+  assign rand_pinomNUM[8] = s106;
+  assign rand_pinomNUM[9] = s108;
+  assign rand_pinomNUM[10] = s110;
+  assign rand_pinomNUM[11] = s112;
+  assign rand_pinomNUM[12] = s114;
+  assign rand_pinomNUM[13] = s116;
+  assign rand_pinomNUM[14] = s118;
+  assign rand_pinomNUM[15] = s120;
   assign uio_out[3:0] = pcOut[11:8];
   assign uio_out[7:4] = outputToOutside;
   assign uio_oe[3:0] = 4'b0;
@@ -1753,7 +1753,7 @@ module tt_um_smallscpu (
     .ioR( ioR ),
     .stPC( stPC ),
     .Reti( Reti ),
-    .rand( RandomNUMSel )
+    .rand_pin( rand_pinomNUMSel )
   );
   Mux_2x1_NBits #(
     .Bits(16)
@@ -1766,9 +1766,9 @@ module tt_um_smallscpu (
   );
   assign s27 = ((InterLock & ~ Reti) | intr);
   assign s29 = ((s26 & ~ Reti) | inter);
-  assign WDmux[0] = (stPC | ld | RandomNUMSel);
+  assign WDmux[0] = (stPC | ld | rand_pinomNUMSel);
   assign WDmux[1] = (ioR | stPC);
-  assign WDmux[2] = RandomNUMSel;
+  assign WDmux[2] = rand_pinomNUMSel;
   assign muxB[0] = s132;
   assign muxB[1] = s131;
   assign muxB[2] = s130;
