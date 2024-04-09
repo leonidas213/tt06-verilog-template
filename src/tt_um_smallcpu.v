@@ -130,7 +130,7 @@ module controllogic (
   output ioR,
   output stPC,
   output Reti,
-  output rand
+  output randomsel
 );
   wire s0;
   wire s1;
@@ -171,7 +171,7 @@ module controllogic (
   assign ioR = ((A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & F));
   assign stPC = (s5 & B & C & D & s3 & F & s4);
   assign Reti = (A & s0 & s1 & s2 & E & s6 & s4);
-  assign rand = (A & s0 & s1 & s2 & E & F & G);
+  assign randomsel = (A & s0 & s1 & s2 & E & F & G);
 endmodule
 
 module Mux_4x1
@@ -1200,7 +1200,7 @@ module tt_um_smallcpu (
     .ioR( ioR ),
     .stPC( stPC ),
     .Reti( Reti ),
-    .rand( RandomNUMSel )
+    .randomsel( RandomNUMSel )
   );
   assign WDmux[0] = (stPC | ld | RandomNUMSel);
   assign WDmux[1] = (ioR | stPC);
