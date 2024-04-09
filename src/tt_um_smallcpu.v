@@ -1303,7 +1303,7 @@ module controllogic
    output ior,
    output stpc,
    output reti,
-   output rand);
+   output randy);
   wire s0;
   wire s1;
   wire s2;
@@ -2269,7 +2269,7 @@ module controllogic
   assign ior = n1214_o;
   assign stpc = n1220_o;
   assign reti = n1226_o;
-  assign rand = n1232_o;
+  assign randy = n1232_o;
   /* tt_um_smallcpu.vhdl:160:10  */
   assign s0 = n301_o; // (signal)
   /* tt_um_smallcpu.vhdl:161:10  */
@@ -4303,7 +4303,7 @@ module tt_um_smallcpu
   wire [15:0] s14;
   wire [15:0] din;
   wire [15:0] s15;
-  wire [15:0] randomnum;
+  wire [15:0] randyomnum;
   wire [15:0] s16;
   wire [1:0] s17;
   wire s18;
@@ -4396,7 +4396,7 @@ module tt_um_smallcpu
   wire s94;
   wire s95;
   wire stpc;
-  wire randomnumsel;
+  wire randyomnumsel;
   wire ior;
   wire [6:0] s96;
   wire [6:0] s97;
@@ -4496,7 +4496,7 @@ module tt_um_smallcpu
   wire gate5_ior;
   wire gate5_stpc;
   wire gate5_reti;
-  wire gate5_rand;
+  wire gate5_randy;
   wire n76_o;
   wire n77_o;
   wire n78_o;
@@ -4720,7 +4720,7 @@ module tt_um_smallcpu
   /* tt_um_smallcpu.vhdl:1083:10  */
   assign s15 = n218_o; // (signal)
   /* tt_um_smallcpu.vhdl:1084:10  */
-  assign randomnum = n219_o; // (signal)
+  assign randyomnum = n219_o; // (signal)
   /* tt_um_smallcpu.vhdl:1085:10  */
   assign s16 = gate10_p_out; // (signal)
   /* tt_um_smallcpu.vhdl:1086:10  */
@@ -4906,7 +4906,7 @@ module tt_um_smallcpu
   /* tt_um_smallcpu.vhdl:1177:10  */
   assign stpc = gate5_stpc; // (signal)
   /* tt_um_smallcpu.vhdl:1178:10  */
-  assign randomnumsel = gate5_rand; // (signal)
+  assign randyomnumsel = gate5_randy; // (signal)
   /* tt_um_smallcpu.vhdl:1179:10  */
   assign ior = gate5_ior; // (signal)
   /* tt_um_smallcpu.vhdl:1180:10  */
@@ -5100,11 +5100,11 @@ module tt_um_smallcpu
     .ior(gate5_ior),
     .stpc(gate5_stpc),
     .reti(),
-    .rand(gate5_rand));
+    .randy(gate5_randy));
   /* tt_um_smallcpu.vhdl:1328:21  */
   assign n76_o = stpc | ld;
   /* tt_um_smallcpu.vhdl:1328:27  */
-  assign n77_o = n76_o | randomnumsel;
+  assign n77_o = n76_o | randyomnumsel;
   /* tt_um_smallcpu.vhdl:1329:20  */
   assign n78_o = ior | stpc;
   /* tt_um_smallcpu.vhdl:1344:3  */
@@ -5152,7 +5152,7 @@ module tt_um_smallcpu
     .in_2(din),
     .in_3(s15),
     .in_4(n89_o),
-    .in_5(randomnum),
+    .in_5(randyomnum),
     .in_6(n90_o),
     .in_7(n91_o),
     .p_out(gate10_p_out));
@@ -5585,7 +5585,7 @@ module tt_um_smallcpu
   assign n213_o = s57 & n212_o;
   assign n214_o = {s105, s106, s107};
   assign n215_o = {s123, s125};
-  assign n216_o = {randomnumsel, n78_o, n77_o};
+  assign n216_o = {randyomnumsel, n78_o, n77_o};
   assign n217_o = {1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n10_o, n9_o, n8_o, n7_o, n6_o, n5_o, n4_o, n3_o};
   assign n218_o = {4'b0000, s28};
   assign n219_o = {s95, s93, s91, s89, s87, s85, s83, s81, s79, s77, s75, s73, s71, s69, s67, s65};
