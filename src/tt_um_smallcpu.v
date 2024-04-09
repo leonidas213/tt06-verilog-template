@@ -267,13 +267,13 @@ endmodule
 
 module swapn
   (input  [15:0] di,
-   output [15:0] do);
+   output [15:0] data_out_wire);
   wire [3:0] n1540_o;
   wire [3:0] n1541_o;
   wire [3:0] n1542_o;
   wire [3:0] n1543_o;
   wire [15:0] n1544_o;
-  assign do = n1544_o;
+  assign data_out_wire = n1544_o;
   /* tt_um_smallcpu.vhdl:973:23  */
   assign n1540_o = di[7:4];
   /* tt_um_smallcpu.vhdl:974:23  */
@@ -287,11 +287,11 @@ endmodule
 
 module swap
   (input  [15:0] di,
-   output [15:0] do);
+   output [15:0] data_out_wire);
   wire [7:0] n1536_o;
   wire [7:0] n1537_o;
   wire [15:0] n1538_o;
-  assign do = n1538_o;
+  assign data_out_wire = n1538_o;
   /* tt_um_smallcpu.vhdl:955:23  */
   assign n1536_o = di[15:8];
   /* tt_um_smallcpu.vhdl:956:24  */
@@ -302,14 +302,14 @@ endmodule
 module asr
   (input  [15:0] di,
    output c,
-   output [15:0] do);
+   output [15:0] data_out_wire);
   wire s0;
   wire n1531_o;
   wire n1532_o;
   wire [13:0] n1533_o;
   wire [15:0] n1534_o;
   assign c = n1531_o;
-  assign do = n1534_o;
+  assign data_out_wire = n1534_o;
   /* tt_um_smallcpu.vhdl:932:10  */
   assign s0 = n1532_o; // (signal)
   /* tt_um_smallcpu.vhdl:934:10  */
@@ -324,12 +324,12 @@ endmodule
 module lsr
   (input  [15:0] di,
    input  ci,
-   output [15:0] do,
+   output [15:0] data_out_wire,
    output co);
   wire [14:0] n1526_o;
   wire n1527_o;
   wire [15:0] n1528_o;
-  assign do = n1528_o;
+  assign data_out_wire = n1528_o;
   assign co = n1527_o;
   /* tt_um_smallcpu.vhdl:910:24  */
   assign n1526_o = di[15:1];
@@ -341,12 +341,12 @@ endmodule
 module lsl
   (input  [15:0] di,
    input  ci,
-   output [15:0] do,
+   output [15:0] data_out_wire,
    output co);
   wire [14:0] n1521_o;
   wire n1522_o;
   wire [15:0] n1523_o;
-  assign do = n1523_o;
+  assign data_out_wire = n1523_o;
   assign co = n1522_o;
   /* tt_um_smallcpu.vhdl:888:24  */
   assign n1521_o = di[14:0];
@@ -4595,14 +4595,14 @@ module tt_um_smallcpu
   wire gate41_eq;
   wire gate41_le;
   localparam [15:0] n153_o = 16'b0000000000000000;
-  wire [15:0] gate42_do;
+  wire [15:0] gate42_data_out_wire;
   wire gate42_co;
-  wire [15:0] gate43_do;
+  wire [15:0] gate43_data_out_wire;
   wire gate43_co;
   wire gate44_c;
-  wire [15:0] gate44_do;
-  wire [15:0] gate45_do;
-  wire [15:0] gate46_do;
+  wire [15:0] gate44_data_out_wire;
+  wire [15:0] gate45_data_out_wire;
+  wire [15:0] gate46_data_out_wire;
   wire [15:0] n162_o;
   wire [15:0] gate47_p_out;
   wire [15:0] gate48_p_out;
@@ -4794,15 +4794,15 @@ module tt_um_smallcpu
   /* tt_um_smallcpu.vhdl:1121:10  */
   assign s41 = gate47_p_out; // (signal)
   /* tt_um_smallcpu.vhdl:1122:10  */
-  assign s42 = gate42_do; // (signal)
+  assign s42 = gate42_data_out_wire; // (signal)
   /* tt_um_smallcpu.vhdl:1123:10  */
-  assign s43 = gate43_do; // (signal)
+  assign s43 = gate43_data_out_wire; // (signal)
   /* tt_um_smallcpu.vhdl:1124:10  */
-  assign s44 = gate44_do; // (signal)
+  assign s44 = gate44_data_out_wire; // (signal)
   /* tt_um_smallcpu.vhdl:1125:10  */
-  assign s45 = gate45_do; // (signal)
+  assign s45 = gate45_data_out_wire; // (signal)
   /* tt_um_smallcpu.vhdl:1126:10  */
-  assign s46 = gate46_do; // (signal)
+  assign s46 = gate46_data_out_wire; // (signal)
   /* tt_um_smallcpu.vhdl:1127:10  */
   assign s47 = gate51_c_o; // (signal)
   /* tt_um_smallcpu.vhdl:1128:10  */
@@ -5436,27 +5436,27 @@ module tt_um_smallcpu
   lsl gate42 (
     .di(s2),
     .ci(s52),
-    .do(gate42_do),
+    .data_out_wire(gate42_data_out_wire),
     .co(gate42_co));
   /* tt_um_smallcpu.vhdl:1670:3  */
   lsr gate43 (
     .di(s2),
     .ci(s52),
-    .do(gate43_do),
+    .data_out_wire(gate43_data_out_wire),
     .co(gate43_co));
   /* tt_um_smallcpu.vhdl:1676:3  */
   asr gate44 (
     .di(s2),
     .c(gate44_c),
-    .do(gate44_do));
+    .data_out_wire(gate44_data_out_wire));
   /* tt_um_smallcpu.vhdl:1681:3  */
   swap gate45 (
     .di(s2),
-    .do(gate45_do));
+    .data_out_wire(gate45_data_out_wire));
   /* tt_um_smallcpu.vhdl:1685:3  */
   swapn gate46 (
     .di(s2),
-    .do(gate46_do));
+    .data_out_wire(gate46_data_out_wire));
   /* tt_um_smallcpu.vhdl:1689:10  */
   assign n162_o = ~s2;
   /* tt_um_smallcpu.vhdl:1690:3  */
