@@ -976,7 +976,7 @@ module tt_um_smallcpu (
   wire [3:0] s9;
   wire [3:0] s10;
   wire [7:0] OPcode;
-  wire [5:0] s11;
+  wire [4:0] s11;
   wire st;
   wire s12;
   wire ld;
@@ -1310,7 +1310,7 @@ module tt_um_smallcpu (
   // mem
   DIG_RAMDualPort #(
     .Bits(16),
-    .AddrBits(6)
+    .AddrBits(5)
   )
   DIG_RAMDualPort_i9 (
     .A( s11 ),
@@ -1831,7 +1831,7 @@ module tt_um_smallcpu (
     .b( 16'b11 ),
     .\= ( s138 )
   );
-  assign s11 = s14[5:0];
+  assign s11 = s14[4:0];
   assign s34 = s1[3:0];
   assign s25 = s14[15];
   assign s31 = s14[11:0];
