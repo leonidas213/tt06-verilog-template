@@ -130,7 +130,8 @@ module controllogic (
   output ioR,
   output stPC,
   output Reti,
-  output randomsel
+  output randomSel,
+  output timerSel
 );
   wire s0;
   wire s1;
@@ -139,39 +140,40 @@ module controllogic (
   wire s4;
   wire s5;
   wire s6;
-  assign s5 = ~ A;
+  assign s6 = ~ A;
   assign s0 = ~ B;
   assign s1 = ~ C;
   assign s2 = ~ D;
   assign s3 = ~ E;
-  assign s6 = ~ F;
+  assign s5 = ~ F;
   assign s4 = ~ G;
-  assign muxb0 = ((A & s0 & s1 & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & E & F & G) | (s5 & s1 & D & E & F & s4) | (s5 & B & C & s3 & s6 & s4) | (s5 & s0 & s1 & D & F & s4) | (s5 & s0 & s1 & D & E & s4) | (s5 & s0 & C & s2 & s3 & s4) | (s5 & B & s1 & s2 & s3 & G) | (s5 & C & D & s6 & G) | (s5 & C & s2 & E & G) | (s5 & B & C & E & G) | (s5 & B & C & s2 & E));
-  assign muxb1 = ((A & s0 & s1 & s2 & E & F & s4) | (s5 & C & s2 & s3 & s6 & G) | (s5 & B & s1 & s2 & s3 & s4) | (A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & s6) | (s5 & s1 & D & F & G) | (s5 & C & D & s6 & s4) | (s5 & B & C & s6 & G) | (s5 & B & C & F & s4) | (s5 & C & s2 & E & s4) | (s5 & s0 & s1 & D & G) | (s5 & B & D & E) | (s5 & B & C & E));
-  assign muxb2 = ((s5 & B & C & D & E & F & G) | (s5 & C & s2 & s3 & s6 & s4) | (s5 & B & s2 & s3 & F & G) | (s5 & B & s1 & s3 & F & G) | (s5 & s0 & s1 & D & F & s4) | (s5 & s0 & C & D & s6 & G) | (A & s0 & s1 & s2 & F & G) | (s5 & s0 & C & s2 & s3 & s4) | (s5 & s0 & C & s2 & E & G) | (s5 & B & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & s4) | (s5 & s1 & D & E & s4));
-  assign src2D = ((s5 & s0 & s1 & s2 & s3 & s6 & G) | (s5 & B & s1 & D & s3 & F & G) | (s5 & B & s1 & D & E & s6 & G) | (s5 & B & C & s2 & s3 & s6 & G) | (A & s0 & s1 & s2 & s3 & s6 & s4) | (s5 & B & D & E & F & s4) | (s5 & B & C & D & E & F));
-  assign aluop0 = ((s5 & s0 & s1 & D & E & F & s4) | (s5 & s0 & C & s2 & s3 & s6 & G) | (s5 & s0 & C & s2 & s3 & F & s4) | (s5 & s0 & C & D & E & F & G) | (s5 & s1 & s2 & s3 & F & G) | (s5 & s0 & s1 & E & s6 & G) | (s5 & B & s1 & s2 & F));
-  assign aluop1 = ((s5 & s0 & C & D & s3 & F & G) | (A & s0 & s1 & s2 & E & s6 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s5 & B & s1 & D & s3 & s4) | (s5 & s0 & C & D & E & s6) | (s5 & B & s1 & D & s3 & s6) | (s5 & B & s1 & s2 & E));
-  assign aluop2 = ((s5 & B & s1 & D & s3 & F & s4) | (A & s0 & s1 & s2 & E & s6 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s5 & s0 & s2 & E & F & G) | (s5 & s0 & D & s3 & s6 & s4) | (s5 & s0 & C & s3 & F & G) | (s5 & s0 & C & s2 & E & F) | (s5 & s0 & C & D & s6) | (s5 & s0 & C & D & s3));
-  assign aluop3 = ((s5 & s0 & D & E & F & G) | (s5 & s0 & C & D & F & s4) | (s5 & s0 & s2 & E & s6) | (s5 & B & s1 & s3 & s6) | (s5 & s0 & C & s2 & s3) | (s5 & B & s1 & s2 & s3) | (s0 & s1 & s2 & E & s6 & G) | (s0 & s1 & s2 & E & F & s4));
-  assign aluop4 = ((s5 & B & C & s2 & s3 & s6 & G) | (s5 & B & C & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & s3 & s6 & s4) | (s5 & s1 & D & E & s6 & s4) | (s5 & s0 & s1 & E & F & s4) | (s5 & s0 & s1 & s2 & F & s4) | (s5 & s0 & C & D & s3 & G) | (s5 & B & s1 & s2 & E & G) | (s5 & B & s1 & D & s3 & G) | (s5 & s0 & s3 & F & G) | (s5 & s0 & D & s6 & s4) | (s5 & s0 & D & E & s6) | (s5 & s0 & C & E & s6) | (s0 & s1 & s2 & s3 & F & G));
-  assign WE = ((s5 & D & s3 & F & s4) | (s5 & s1 & E & s6 & s4) | (s5 & s1 & E & F & G) | (s5 & C & s2 & s3 & s4) | (s5 & s1 & D & s3 & s6) | (s5 & C & s2 & s3 & F) | (s5 & s0 & D & s6) | (s5 & s1 & s2 & E) | (s5 & s0 & D & s3) | (s5 & s0 & s1 & D) | (s5 & s0 & C & s2) | (s0 & s1 & s2 & G) | (s0 & s1 & s2 & F));
-  assign sf = ((s5 & s1 & D & s3 & s6 & s4) | (s5 & s0 & s2 & F & s4) | (s5 & s0 & D & F & G) | (s5 & s0 & s1 & F & G) | (s5 & s0 & C & s6) | (s5 & B & s1 & s2) | (s5 & s0 & E) | (s0 & s1 & s2 & E & s6 & G) | (s0 & s1 & s2 & E & F & s4));
-  assign alu2D = ((s5 & C & s2 & s3 & F & G) | (s5 & s1 & D & s3 & s4) | (s5 & s1 & D & s3 & s6) | (s5 & s0 & E & s6) | (s5 & s0 & s2 & F) | (s5 & s0 & s1 & F) | (s5 & s1 & s2 & E) | (s5 & s0 & C & s3) | (s0 & s1 & s2 & E & s6 & G) | (s0 & s1 & s2 & E & F & s4));
-  assign iem0 = ((s5 & s0 & C & s2 & s3 & s6 & G) | (A & s0 & s1 & s2 & s3 & s6 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s5 & C & D & E & s6 & s4) | (s5 & s0 & C & D & s6 & s4) | (s5 & B & C & D & F & s4) | (s5 & s0 & C & s2 & E & s4) | (s5 & B & s1 & s2 & s3 & s4) | (s5 & s1 & D & E & G) | (s5 & s0 & s1 & D & G));
-  assign iem1 = ((s5 & B & s1 & D & E & s6 & G) | (s5 & B & C & D & E & F & s4));
-  assign br0 = ((s5 & B & C & s2 & E & F & G) | (s5 & B & C & D & s6 & G) | (s5 & B & C & D & s3 & s6));
-  assign br1 = ((s5 & B & C & s2 & E & s6 & G) | (s5 & B & C & s2 & E & F & s4) | (s5 & B & C & D & s3 & s6));
-  assign br2 = ((s5 & B & C & D & s3 & s6 & G) | (s5 & B & C & s2 & E & s4) | (s5 & B & C & s2 & E & F));
-  assign muxA = ((s5 & B & s1 & D & E & s6 & s4) | (s5 & B & C & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & F));
-  assign ld = ((s5 & B & s1 & D & E & s6 & s4) | (s5 & B & s1 & D & E & F & G) | (s5 & B & C & s2 & s3 & s4));
-  assign st = ((s5 & B & s1 & D & s3 & F & G) | (s5 & B & s1 & D & E & s6 & G) | (s5 & B & s1 & D & E & F & s4) | (s5 & B & C & s2 & s3 & s6 & G));
-  assign abs = ((s5 & B & C & D & E & s6 & s4) | (A & s0 & s1 & s2 & E & s6 & s4) | (s5 & B & C & D & s3 & F));
-  assign ioW = ((A & s0 & s1 & s2 & s3 & s6 & s4) | (s5 & B & C & D & E & F));
+  assign muxb0 = ((A & s0 & s1 & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & E & F & G) | (A & s0 & s1 & D & s3 & s5 & s4) | (s6 & s1 & D & E & F & s4) | (s6 & B & C & s3 & s5 & s4) | (s6 & s0 & s1 & D & F & s4) | (s6 & s0 & s1 & D & E & s4) | (s6 & s0 & C & s2 & s3 & s4) | (s6 & B & s1 & s2 & s3 & G) | (s6 & C & D & s5 & G) | (s6 & C & s2 & E & G) | (s6 & B & C & E & G) | (s6 & B & C & s2 & E));
+  assign muxb1 = ((A & s0 & s1 & s2 & E & F & s4) | (s6 & C & s2 & s3 & s5 & G) | (s6 & B & s1 & s2 & s3 & s4) | (A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & s5) | (s6 & s1 & D & F & G) | (s6 & C & D & s5 & s4) | (s6 & B & C & s5 & G) | (s6 & B & C & F & s4) | (s6 & C & s2 & E & s4) | (s6 & s0 & s1 & D & G) | (s6 & B & D & E) | (s6 & B & C & E));
+  assign muxb2 = ((s6 & B & C & D & E & F & G) | (s6 & C & s2 & s3 & s5 & s4) | (s6 & B & s2 & s3 & F & G) | (s6 & B & s1 & s3 & F & G) | (A & s0 & s1 & s3 & s5 & s4) | (s6 & s0 & s1 & D & F & s4) | (s6 & s0 & C & D & s5 & G) | (A & s0 & s1 & s2 & F & G) | (s6 & s0 & C & s2 & s3 & s4) | (s6 & s0 & C & s2 & E & G) | (s6 & B & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & s4) | (s6 & s1 & D & E & s4));
+  assign src2D = ((s6 & s0 & s1 & s2 & s3 & s5 & G) | (s6 & B & s1 & D & s3 & F & G) | (s6 & B & s1 & D & E & s5 & G) | (s6 & B & C & s2 & s3 & s5 & G) | (A & s0 & s1 & s2 & s3 & s5 & s4) | (s6 & B & D & E & F & s4) | (s6 & B & C & D & E & F));
+  assign aluop0 = ((s6 & s0 & s1 & D & E & F & s4) | (s6 & s0 & C & s2 & s3 & s5 & G) | (s6 & s0 & C & s2 & s3 & F & s4) | (s6 & s0 & C & D & E & F & G) | (s6 & s1 & s2 & s3 & F & G) | (s6 & s0 & s1 & E & s5 & G) | (s6 & B & s1 & s2 & F));
+  assign aluop1 = ((s6 & s0 & C & D & s3 & F & G) | (A & s0 & s1 & s2 & E & s5 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s6 & B & s1 & D & s3 & s4) | (s6 & s0 & C & D & E & s5) | (s6 & B & s1 & D & s3 & s5) | (s6 & B & s1 & s2 & E));
+  assign aluop2 = ((s6 & B & s1 & D & s3 & F & s4) | (A & s0 & s1 & s2 & E & s5 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s6 & s0 & s2 & E & F & G) | (s6 & s0 & D & s3 & s5 & s4) | (s6 & s0 & C & s3 & F & G) | (s6 & s0 & C & s2 & E & F) | (s6 & s0 & C & D & s5) | (s6 & s0 & C & D & s3));
+  assign aluop3 = ((s6 & s0 & D & E & F & G) | (s6 & s0 & C & D & F & s4) | (s6 & s0 & s2 & E & s5) | (s6 & B & s1 & s3 & s5) | (s6 & s0 & C & s2 & s3) | (s6 & B & s1 & s2 & s3) | (s0 & s1 & s2 & E & s5 & G) | (s0 & s1 & s2 & E & F & s4));
+  assign aluop4 = ((s6 & B & C & s2 & s3 & s5 & G) | (s6 & B & C & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & s3 & s5 & s4) | (s6 & s1 & D & E & s5 & s4) | (s6 & s0 & s1 & E & F & s4) | (s6 & s0 & s1 & s2 & F & s4) | (s6 & s0 & C & D & s3 & G) | (s6 & B & s1 & s2 & E & G) | (s6 & B & s1 & D & s3 & G) | (s6 & s0 & s3 & F & G) | (s6 & s0 & D & s5 & s4) | (s6 & s0 & D & E & s5) | (s6 & s0 & C & E & s5) | (s0 & s1 & s2 & s3 & F & G));
+  assign WE = ((s6 & D & s3 & F & s4) | (s6 & s1 & E & s5 & s4) | (s6 & s1 & E & F & G) | (s6 & C & s2 & s3 & s4) | (s6 & s1 & D & s3 & s5) | (s6 & C & s2 & s3 & F) | (s6 & s0 & D & s5) | (s6 & s1 & s2 & E) | (s6 & s0 & D & s3) | (s6 & s0 & s1 & D) | (s6 & s0 & C & s2) | (s0 & s1 & D & s3 & s5 & s4) | (s0 & s1 & s2 & G) | (s0 & s1 & s2 & F));
+  assign sf = ((s6 & s1 & D & s3 & s5 & s4) | (s6 & s0 & s2 & F & s4) | (s6 & s0 & D & F & G) | (s6 & s0 & s1 & F & G) | (s6 & s0 & C & s5) | (s6 & B & s1 & s2) | (s6 & s0 & E) | (s0 & s1 & s2 & E & s5 & G) | (s0 & s1 & s2 & E & F & s4));
+  assign alu2D = ((s6 & C & s2 & s3 & F & G) | (s6 & s1 & D & s3 & s4) | (s6 & s1 & D & s3 & s5) | (s6 & s0 & E & s5) | (s6 & s0 & s2 & F) | (s6 & s0 & s1 & F) | (s6 & s1 & s2 & E) | (s6 & s0 & C & s3) | (s0 & s1 & s2 & E & s5 & G) | (s0 & s1 & s2 & E & F & s4));
+  assign iem0 = ((s6 & s0 & C & s2 & s3 & s5 & G) | (A & s0 & s1 & s2 & s3 & s5 & G) | (A & s0 & s1 & s2 & E & F & s4) | (s6 & C & D & E & s5 & s4) | (s6 & s0 & C & D & s5 & s4) | (s6 & B & C & D & F & s4) | (s6 & s0 & C & s2 & E & s4) | (s6 & B & s1 & s2 & s3 & s4) | (s6 & s1 & D & E & G) | (s6 & s0 & s1 & D & G));
+  assign iem1 = ((s6 & B & s1 & D & E & s5 & G) | (s6 & B & C & D & E & F & s4));
+  assign br0 = ((s6 & B & C & s2 & E & F & G) | (s6 & B & C & D & s5 & G) | (s6 & B & C & D & s3 & s5));
+  assign br1 = ((s6 & B & C & s2 & E & s5 & G) | (s6 & B & C & s2 & E & F & s4) | (s6 & B & C & D & s3 & s5));
+  assign br2 = ((s6 & B & C & D & s3 & s5 & G) | (s6 & B & C & s2 & E & s4) | (s6 & B & C & s2 & E & F));
+  assign muxA = ((s6 & B & s1 & D & E & s5 & s4) | (s6 & B & C & s2 & s3 & F & s4) | (A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & F));
+  assign ld = ((s6 & B & s1 & D & E & s5 & s4) | (s6 & B & s1 & D & E & F & G) | (s6 & B & C & s2 & s3 & s4));
+  assign st = ((s6 & B & s1 & D & s3 & F & G) | (s6 & B & s1 & D & E & s5 & G) | (s6 & B & s1 & D & E & F & s4) | (s6 & B & C & s2 & s3 & s5 & G));
+  assign abs = ((s6 & B & C & D & E & s5 & s4) | (A & s0 & s1 & s2 & E & s5 & s4) | (s6 & B & C & D & s3 & F));
+  assign ioW = ((A & s0 & s1 & s2 & s3 & s5 & s4) | (s6 & B & C & D & E & F));
   assign ioR = ((A & s0 & s1 & s2 & s3 & G) | (A & s0 & s1 & s2 & s3 & F));
-  assign stPC = (s5 & B & C & D & s3 & F & s4);
-  assign Reti = (A & s0 & s1 & s2 & E & s6 & s4);
-  assign randomsel = (A & s0 & s1 & s2 & E & F & G);
+  assign stPC = (s6 & B & C & D & s3 & F & s4);
+  assign Reti = (A & s0 & s1 & s2 & E & s5 & s4);
+  assign randomSel = (A & s0 & s1 & s2 & E & F & G);
+  assign timerSel = (A & s0 & s1 & D & s3 & s5 & s4);
 endmodule
 
 module Mux_4x1
@@ -920,6 +922,36 @@ module DIG_Sub #(
 endmodule
 
 
+module Mux_8x1
+(
+    input [2:0] sel,
+    input in_0,
+    input in_1,
+    input in_2,
+    input in_3,
+    input in_4,
+    input in_5,
+    input in_6,
+    input in_7,
+    output reg out
+);
+    always @ (*) begin
+        case (sel)
+            3'h0: out = in_0;
+            3'h1: out = in_1;
+            3'h2: out = in_2;
+            3'h3: out = in_3;
+            3'h4: out = in_4;
+            3'h5: out = in_5;
+            3'h6: out = in_6;
+            3'h7: out = in_7;
+            default:
+                out = 'h0;
+        endcase
+    end
+endmodule
+
+
 module tt_um_smallcpu (
   input [7:0] ui_in,
   input [7:0] uio_in,
@@ -944,7 +976,7 @@ module tt_um_smallcpu (
   wire [3:0] s9;
   wire [3:0] s10;
   wire [7:0] OPcode;
-  wire [4:0] s11;
+  wire [6:0] s11;
   wire st;
   wire s12;
   wire ld;
@@ -953,6 +985,7 @@ module tt_um_smallcpu (
   wire [15:0] s14;
   wire [15:0] Din;
   wire [15:0] s15;
+  wire [15:0] timer_in;
   wire [15:0] RandomNUM;
   wire [15:0] s16;
   wire [1:0] s17;
@@ -1074,6 +1107,7 @@ module tt_um_smallcpu (
   wire s116;
   wire s117;
   wire Reti;
+  wire timer_Sel;
   wire s118;
   wire s119;
   wire [3:0] s120;
@@ -1087,6 +1121,27 @@ module tt_um_smallcpu (
   wire s127;
   wire s128;
   wire s129;
+  wire s130;
+  wire s131;
+  wire [2:0] s132;
+  wire [2:0] s133;
+  wire s134;
+  wire s135;
+  wire s136;
+  wire s137;
+  wire s138;
+  wire s139;
+  wire s140;
+  wire [7:0] s141;
+  wire s142;
+  wire s143;
+  wire s144;
+  wire s145;
+  wire s146;
+  wire s147;
+  wire s148;
+  wire s149;
+  wire s150;
   assign Din[0] = uio_in[0];
   assign Din[1] = uio_in[1];
   assign Din[2] = uio_in[2];
@@ -1200,11 +1255,12 @@ module tt_um_smallcpu (
     .ioR( ioR ),
     .stPC( stPC ),
     .Reti( Reti ),
-    .randomsel( RandomNUMSel )
+    .randomSel( RandomNUMSel ),
+    .timerSel( timer_Sel )
   );
   assign WDmux[0] = (stPC | ld | RandomNUMSel);
   assign WDmux[1] = (ioR | stPC);
-  assign WDmux[2] = RandomNUMSel;
+  assign WDmux[2] = (timer_Sel | RandomNUMSel);
   assign muxB[0] = s107;
   assign muxB[1] = s106;
   assign muxB[2] = s105;
@@ -1254,7 +1310,7 @@ module tt_um_smallcpu (
   // mem
   DIG_RAMDualPort #(
     .Bits(16),
-    .AddrBits(5)
+    .AddrBits(7)
   )
   DIG_RAMDualPort_i9 (
     .A( s11 ),
@@ -1273,7 +1329,7 @@ module tt_um_smallcpu (
     .in_1( s13 ),
     .in_2( Din ),
     .in_3( s15 ),
-    .in_4( 16'b0 ),
+    .in_4( timer_in ),
     .in_5( RandomNUM ),
     .in_6( 16'b0 ),
     .in_7( 16'b0 ),
@@ -1582,6 +1638,44 @@ module tt_um_smallcpu (
     .en( s119 ),
     .Q( outputToOutsideEnable )
   );
+  assign s131 = (s130 & ioW);
+  // prescaler
+  DIG_Register_BUS #(
+    .Bits(3)
+  )
+  DIG_Register_BUS_i40 (
+    .D( s132 ),
+    .C( s12 ),
+    .en( s131 ),
+    .Q( s133 )
+  );
+  assign s135 = (s134 & ioW);
+  // timer_is_active
+  DIG_Register DIG_Register_i41 (
+    .D( s136 ),
+    .C( s12 ),
+    .en( s135 ),
+    .Q( s137 )
+  );
+  DIG_JK_FF #(
+    .Default(0)
+  )
+  DIG_JK_FF_i42 (
+    .J( s139 ),
+    .C( s12 ),
+    .K( 1'b1 ),
+    .Q( s140 )
+  );
+  assign s139 = (s1[0] & (s138 & ioW));
+  DIG_Counter_Nbit #(
+    .Bits(8)
+  )
+  DIG_Counter_Nbit_i43 (
+    .en( s137 ),
+    .C( s12 ),
+    .clr( s140 ),
+    .out( s141 )
+  );
   assign FlagOut[0] = s18;
   assign FlagOut[1] = s19;
   assign FlagOut[2] = s20;
@@ -1589,7 +1683,7 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i40 (
+  CompSigned_i44 (
     .a( s14 ),
     .b( 16'b101 ),
     .\= ( s32 )
@@ -1600,33 +1694,33 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i41 (
+  CompSigned_i45 (
     .a( s14 ),
     .b( 16'b0 ),
     .\= ( s24 )
   );
-  LSL LSL_i42 (
+  LSL LSL_i46 (
     .Di( s2 ),
     .Ci( s52 ),
     .Do( s42 ),
     .Co( s49 )
   );
-  LSR LSR_i43 (
+  LSR LSR_i47 (
     .Di( s2 ),
     .Ci( s52 ),
     .Do( s43 ),
     .Co( s50 )
   );
-  ASR ASR_i44 (
+  ASR ASR_i48 (
     .Di( s2 ),
     .C( s51 ),
     .Do( s44 )
   );
-  SWAP SWAP_i45 (
+  SWAP SWAP_i49 (
     .Di( s2 ),
     .Do( s45 )
   );
-  SWAPN SWAPN_i46 (
+  SWAPN SWAPN_i50 (
     .Di( s2 ),
     .Do( s46 )
   );
@@ -1634,14 +1728,14 @@ module tt_um_smallcpu (
   DIG_Neg #(
     .Bits(16)
   )
-  DIG_Neg_i47 (
+  DIG_Neg_i51 (
     .in( s2 ),
     .out( s41 )
   );
   Mux_2x1_NBits #(
     .Bits(16)
   )
-  Mux_2x1_NBits_i48 (
+  Mux_2x1_NBits_i52 (
     .sel( s57 ),
     .in_0( 16'b0 ),
     .in_1( s58 ),
@@ -1650,7 +1744,7 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i49 (
+  CompSigned_i53 (
     .a( s14 ),
     .b( 16'b1000 ),
     .\= ( s60 )
@@ -1675,7 +1769,7 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i50 (
+  CompSigned_i54 (
     .a( s14 ),
     .b( 16'b110 ),
     .\= ( s118 )
@@ -1687,7 +1781,7 @@ module tt_um_smallcpu (
   DIG_Add #(
     .Bits(16)
   )
-  DIG_Add_i51 (
+  DIG_Add_i55 (
     .a( s2 ),
     .b( s7 ),
     .c_i( s52 ),
@@ -1697,7 +1791,7 @@ module tt_um_smallcpu (
   DIG_Sub #(
     .Bits(16)
   )
-  DIG_Sub_i52 (
+  DIG_Sub_i56 (
     .a( s2 ),
     .b( s7 ),
     .c_i( s52 ),
@@ -1707,28 +1801,74 @@ module tt_um_smallcpu (
   DIG_Add #(
     .Bits(12)
   )
-  DIG_Add_i53 (
+  DIG_Add_i57 (
     .a( pcOut ),
     .b( 12'b1 ),
     .c_i( 1'b0 ),
     .s( s28 )
   );
-  assign s11 = s14[4:0];
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i58 (
+    .a( s14 ),
+    .b( 16'b1 ),
+    .\= ( s130 )
+  );
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i59 (
+    .a( s14 ),
+    .b( 16'b10 ),
+    .\= ( s134 )
+  );
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i60 (
+    .a( s14 ),
+    .b( 16'b11 ),
+    .\= ( s138 )
+  );
+  assign s11 = s14[6:0];
   assign s34 = s1[3:0];
   assign s25 = s14[15];
   assign s31 = s14[11:0];
   assign s120 = s1[3:0];
   assign uo_out = pcOut[7:0];
+  assign s132 = s1[2:0];
+  assign s136 = s1[0];
+  assign s142 = s141[0];
+  assign s143 = s141[1];
+  assign s144 = s141[2];
+  assign s145 = s141[3];
+  assign s146 = s141[4];
+  assign s147 = s141[5];
+  assign s148 = s141[6];
+  assign s149 = s141[7];
   assign s15[11:0] = s28;
   assign s15[15:12] = 4'b0;
   DIG_Add #(
     .Bits(12)
   )
-  DIG_Add_i54 (
+  DIG_Add_i61 (
     .a( s28 ),
     .b( s31 ),
     .c_i( 1'b0 ),
     .s( s29 )
+  );
+  Mux_8x1 Mux_8x1_i62 (
+    .sel( s133 ),
+    .in_0( s142 ),
+    .in_1( s143 ),
+    .in_2( s144 ),
+    .in_3( s145 ),
+    .in_4( s146 ),
+    .in_5( s147 ),
+    .in_6( s148 ),
+    .in_7( s149 ),
+    .out( s150 )
   );
   assign s63 = s59[0];
   assign s66 = s59[1];
@@ -1749,16 +1889,25 @@ module tt_um_smallcpu (
   Mux_2x1_NBits #(
     .Bits(12)
   )
-  Mux_2x1_NBits_i55 (
+  Mux_2x1_NBits_i63 (
     .sel( s22 ),
     .in_0( s28 ),
     .in_1( s29 ),
     .out( s30 )
   );
+  DIG_Counter_Nbit #(
+    .Bits(16)
+  )
+  DIG_Counter_Nbit_i64 (
+    .en( s137 ),
+    .C( s150 ),
+    .clr( s140 ),
+    .out( timer_in )
+  );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i56 (
+  DIG_D_FF_AS_1bit_i65 (
     .Set( 1'b0 ),
     .D( s53 ),
     .C( s54 ),
