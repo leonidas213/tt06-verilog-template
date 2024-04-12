@@ -34,7 +34,7 @@ async def test_project(dut):
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
-
+    print(dut.uio_out.value)
     # Set the input values, wait one clock cycle, and check the output
     PC = 0
     oldPc = 0

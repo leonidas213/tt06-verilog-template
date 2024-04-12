@@ -837,6 +837,67 @@ end Behavioral;
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
+
+entity MUX_GATE_3 is
+  port (
+    p_out: out std_logic;
+    sel: in std_logic_vector (2 downto 0);
+    
+    in_0: in std_logic;
+    in_1: in std_logic;
+    in_2: in std_logic;
+    in_3: in std_logic;
+    in_4: in std_logic;
+    in_5: in std_logic;
+    in_6: in std_logic;
+    in_7: in std_logic );
+end MUX_GATE_3;
+
+architecture Behavioral of MUX_GATE_3 is
+begin
+  with sel select
+    p_out <=
+      in_0 when "000",
+      in_1 when "001",
+      in_2 when "010",
+      in_3 when "011",
+      in_4 when "100",
+      in_5 when "101",
+      in_6 when "110",
+      in_7 when "111",
+      '0' when others;
+end Behavioral;
+
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
+
+entity DIG_D_FF is
+  generic (
+    Default: std_logic ); 
+  port ( D  : in std_logic;
+         C  : in std_logic;
+         Q  : out std_logic;
+         notQ : out std_logic );
+end DIG_D_FF;
+
+architecture Behavioral of DIG_D_FF is
+   signal state : std_logic := Default;
+begin
+   Q    <= state;
+   notQ <= NOT( state );
+
+   process(C)
+   begin
+      if rising_edge(C) then
+        state  <= D;
+      end if;
+   end process;
+end Behavioral;
+
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
 USE ieee.numeric_std.all;
 entity COMP_GATE_SIGNED is
   generic ( Bits : integer );
@@ -868,116 +929,6 @@ begin
   end process;
 end Behavioral;
 
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--- Moves the data word to the left to higher bits, so it multiplies 
--- by two. The current carry bit is pushed in at the bottom, and 
--- the most significant bit is output as a carry bit.
-entity LSL is
-  port (
-    Di: in std_logic_vector(15 downto 0); -- data input
-    Ci: in std_logic; -- carry input
-    Do: out std_logic_vector(15 downto 0); -- data output
-    Co: out std_logic -- carry output
-    );
-end LSL;
-
-architecture Behavioral of LSL is
-begin
-  Do(0) <= Ci;
-  Do(15 downto 1) <= Di(14 downto 0);
-  Co <= Di(15);
-end Behavioral;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--- Shift right. So a division by two.
--- The carry bit is inserted at the top. And the least 
--- significant bit is output as a new carry bit.
-entity LSR is
-  port (
-    Di: in std_logic_vector(15 downto 0); -- data input
-    Ci: in std_logic; -- carry input
-    Do: out std_logic_vector(15 downto 0); -- data output
-    Co: out std_logic -- carry output
-    );
-end LSR;
-
-architecture Behavioral of LSR is
-begin
-  Do(14 downto 0) <= Di(15 downto 1);
-  Do(15) <= Ci;
-  Co <= Di(0);
-end Behavioral;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--- Arithmetic shift right. An unsigned division by two. 
--- The lower bit is output as the carry bit, while the 
--- uppermost bit remains unchanged in order to 
--- obtain the sign.
-entity ASR is
-  port (
-    Di: in std_logic_vector(15 downto 0); -- data input
-    C: out std_logic; -- carry output
-    Do: out std_logic_vector(15 downto 0) -- data output
-    );
-end ASR;
-
-architecture Behavioral of ASR is
-  signal s0: std_logic;
-begin
-  C <= Di(0);
-  s0 <= Di(15);
-  Do(13 downto 0) <= Di(14 downto 1);
-  Do(14) <= s0;
-  Do(15) <= s0;
-end Behavioral;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--- Swaps the high-byte and the low-byte.
-entity SWAP is
-  port (
-    Di: in std_logic_vector(15 downto 0); -- data input
-    Do: out std_logic_vector(15 downto 0) -- data output
-    );
-end SWAP;
-
-architecture Behavioral of SWAP is
-begin
-  Do(7 downto 0) <= Di(15 downto 8);
-  Do(15 downto 8) <= Di(7 downto 0);
-end Behavioral;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--- Swaps the 4-bit nibble in the high- and the low-byte.
-entity SWAPN is
-  port (
-    Di: in std_logic_vector(15 downto 0); -- Data input
-    Do: out std_logic_vector(15 downto 0) -- Data output
-    );
-end SWAPN;
-
-architecture Behavioral of SWAPN is
-begin
-  Do(3 downto 0) <= Di(7 downto 4);
-  Do(7 downto 4) <= Di(3 downto 0);
-  Do(11 downto 8) <= Di(15 downto 12);
-  Do(15 downto 12) <= Di(11 downto 8);
-end Behavioral;
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
@@ -1047,34 +998,121 @@ end Behavioral;
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
 
-entity MUX_GATE_3 is
+entity COMP_GATE_UNSIGNED is
+  generic ( Bits : integer );
+  port (
+    gr: out std_logic;
+    eq: out std_logic;
+    le: out std_logic;
+    a: in std_logic_vector ((Bits-1) downto 0);
+    b: in std_logic_vector ((Bits-1) downto 0) );
+end COMP_GATE_UNSIGNED;
+
+architecture Behavioral of COMP_GATE_UNSIGNED is
+begin
+  process(a, b)
+  begin
+    if (a > b ) then
+      le <= '0';
+      eq <= '0';
+      gr <= '1';
+    elsif (a < b) then
+      le <= '1';
+      eq <= '0';
+      gr <= '0';
+    else
+      le <= '0';
+      eq <= '1';
+      gr <= '0';
+    end if;
+  end process;
+end Behavioral;
+
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
+
+entity MUX_GATE_1 is
   port (
     p_out: out std_logic;
-    sel: in std_logic_vector (2 downto 0);
+    sel: in std_logic;
     
     in_0: in std_logic;
-    in_1: in std_logic;
-    in_2: in std_logic;
-    in_3: in std_logic;
-    in_4: in std_logic;
-    in_5: in std_logic;
-    in_6: in std_logic;
-    in_7: in std_logic );
-end MUX_GATE_3;
+    in_1: in std_logic );
+end MUX_GATE_1;
 
-architecture Behavioral of MUX_GATE_3 is
+architecture Behavioral of MUX_GATE_1 is
 begin
   with sel select
     p_out <=
-      in_0 when "000",
-      in_1 when "001",
-      in_2 when "010",
-      in_3 when "011",
-      in_4 when "100",
-      in_5 when "101",
-      in_6 when "110",
-      in_7 when "111",
+      in_0 when '0',
+      in_1 when '1',
       '0' when others;
+end Behavioral;
+
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
+USE ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+
+entity DIG_CounterPreset is
+  generic ( Bits: integer;
+            maxValue: integer );
+  port (
+    p_out : out std_logic_vector((Bits-1) downto 0);
+    ovf : out std_logic;
+    C   : in std_logic;
+    en  : in std_logic;
+    clr : in std_logic;
+    dir : in std_logic;
+    p_in  : in std_logic_vector((Bits-1) downto 0);
+    ld  : in std_logic );
+end DIG_CounterPreset;
+
+architecture Behavioral of DIG_CounterPreset is
+   signal count : std_logic_vector((Bits-1) downto 0) := (others => '0');
+
+   function maxVal ( maxv : integer )
+       return integer is variable m : integer;
+   begin
+      if (maxv = 0) then
+        m := (2**Bits)-1;
+      else
+        m := maxv;
+      end if;
+      return m;
+   end function maxVal;
+
+begin
+    process (C, en)
+    begin
+      if rising_edge(C) then
+        if clr='1' then
+          count <= (others => '0');
+        elsif ld='1' then
+          count <= p_in;
+        elsif en='1' then
+          if dir='0' then
+            if count=maxVal(maxValue) then
+              count <= (others => '0');
+            else
+              count <= count + 1;
+            end if;
+          else
+            if count=0 then
+              count <= std_logic_vector(to_unsigned(maxVal(maxValue), Bits));
+            else
+              count <= count - 1;
+            end if;
+          end if;
+        end if;
+      end if;
+    end process;
+
+    p_out <= count;
+    ovf <= en when (count = maxVal(maxValue) and dir='0') OR
+                   (count = 0 and dir='1') else '0';
 end Behavioral;
 
 
@@ -1110,50 +1148,48 @@ architecture Behavioral of main is
   signal s10: std_logic_vector(3 downto 0);
   signal OPcode: std_logic_vector(7 downto 0);
   signal s11: std_logic_vector(4 downto 0);
-  signal st: std_logic;
   signal s12: std_logic;
-  signal ld: std_logic;
-  signal s13: std_logic_vector(15 downto 0);
-  signal WDmux: std_logic_vector(2 downto 0);
+  signal C: std_logic;
+  signal s13: std_logic;
   signal s14: std_logic_vector(15 downto 0);
-  signal s15: std_logic_vector(15 downto 0);
-  signal Din: std_logic_vector(15 downto 0);
+  signal s15: std_logic_vector(2 downto 0);
   signal s16: std_logic_vector(15 downto 0);
+  signal s17: std_logic_vector(15 downto 0);
+  signal Din: std_logic_vector(15 downto 0);
+  signal s18: std_logic_vector(15 downto 0);
   signal timer_in: std_logic_vector(15 downto 0);
   signal RandomNUM: std_logic_vector(15 downto 0);
-  signal s17: std_logic_vector(15 downto 0);
-  signal s18: std_logic_vector(1 downto 0);
-  signal s19: std_logic;
-  signal s20: std_logic;
+  signal s19: std_logic_vector(15 downto 0);
+  signal s20: std_logic_vector(1 downto 0);
   signal s21: std_logic;
   signal s22: std_logic;
   signal s23: std_logic;
-  signal br: std_logic_vector(2 downto 0);
   signal s24: std_logic;
-  signal sf: std_logic;
   signal s25: std_logic;
+  signal br: std_logic_vector(2 downto 0);
   signal s26: std_logic;
+  signal sf: std_logic;
+  signal s27: std_logic;
+  signal s28: std_logic;
   signal FlagOut: std_logic_vector(15 downto 0);
   signal WE: std_logic;
   signal imm: std_logic;
   signal iem: std_logic_vector(1 downto 0);
-  signal s27: std_logic_vector(11 downto 0);
-  signal s28: std_logic;
-  signal pcOut: std_logic_vector(11 downto 0);
   signal s29: std_logic_vector(11 downto 0);
-  signal s30: std_logic_vector(11 downto 0);
+  signal s30: std_logic;
+  signal pcOut: std_logic_vector(11 downto 0);
   signal s31: std_logic_vector(11 downto 0);
-  signal p_abs: std_logic;
   signal s32: std_logic_vector(11 downto 0);
-  signal s33: std_logic;
+  signal s33: std_logic_vector(11 downto 0);
+  signal p_abs: std_logic;
+  signal s34: std_logic_vector(11 downto 0);
+  signal s35: std_logic_vector(11 downto 0);
+  signal s36: std_logic;
   signal ioW: std_logic;
-  signal s34: std_logic;
-  signal s35: std_logic_vector(3 downto 0);
+  signal s37: std_logic;
+  signal s38: std_logic_vector(3 downto 0);
   signal outputToOutside: std_logic_vector(3 downto 0);
   signal sel: std_logic_vector(3 downto 0);
-  signal s36: std_logic_vector(15 downto 0);
-  signal s37: std_logic_vector(15 downto 0);
-  signal s38: std_logic_vector(15 downto 0);
   signal s39: std_logic_vector(15 downto 0);
   signal s40: std_logic_vector(15 downto 0);
   signal s41: std_logic_vector(15 downto 0);
@@ -1163,23 +1199,23 @@ architecture Behavioral of main is
   signal s45: std_logic_vector(15 downto 0);
   signal s46: std_logic_vector(15 downto 0);
   signal s47: std_logic_vector(15 downto 0);
-  signal s48: std_logic;
-  signal s49: std_logic;
-  signal s50: std_logic;
+  signal s48: std_logic_vector(15 downto 0);
+  signal s49: std_logic_vector(15 downto 0);
+  signal s50: std_logic_vector(15 downto 0);
   signal s51: std_logic;
   signal s52: std_logic;
-  signal aluOp: std_logic_vector(4 downto 0);
   signal s53: std_logic;
   signal s54: std_logic;
   signal s55: std_logic;
+  signal aluOp: std_logic_vector(4 downto 0);
   signal s56: std_logic;
   signal s57: std_logic;
   signal s58: std_logic;
-  signal s59: std_logic_vector(15 downto 0);
-  signal s60: std_logic_vector(15 downto 0);
+  signal s59: std_logic;
+  signal s60: std_logic;
   signal s61: std_logic;
-  signal s62: std_logic;
-  signal s63: std_logic;
+  signal s62: std_logic_vector(15 downto 0);
+  signal s63: std_logic_vector(15 downto 0);
   signal s64: std_logic;
   signal s65: std_logic;
   signal s66: std_logic;
@@ -1213,14 +1249,15 @@ architecture Behavioral of main is
   signal s94: std_logic;
   signal s95: std_logic;
   signal s96: std_logic;
+  signal s97: std_logic;
+  signal s98: std_logic;
+  signal s99: std_logic;
   signal stPC: std_logic;
+  signal ld: std_logic;
   signal RandomNUMSel: std_logic;
   signal ioR: std_logic;
-  signal s97: std_logic_vector(6 downto 0);
-  signal s98: std_logic_vector(6 downto 0);
-  signal s99: std_logic;
-  signal s100: std_logic;
-  signal s101: std_logic;
+  signal s100: std_logic_vector(6 downto 0);
+  signal s101: std_logic_vector(6 downto 0);
   signal s102: std_logic;
   signal s103: std_logic;
   signal s104: std_logic;
@@ -1228,47 +1265,48 @@ architecture Behavioral of main is
   signal s106: std_logic;
   signal s107: std_logic;
   signal s108: std_logic;
-  signal src2D: std_logic;
   signal s109: std_logic;
   signal s110: std_logic;
   signal s111: std_logic;
+  signal src2D: std_logic;
   signal s112: std_logic;
   signal s113: std_logic;
-  signal alu2D: std_logic;
   signal s114: std_logic;
   signal s115: std_logic;
   signal s116: std_logic;
+  signal alu2D: std_logic;
   signal s117: std_logic;
   signal s118: std_logic;
-  signal Reti: std_logic;
-  signal timer_Sel: std_logic;
   signal s119: std_logic;
   signal s120: std_logic;
-  signal s121: std_logic_vector(3 downto 0);
-  signal outputToOutsideEnable: std_logic_vector(3 downto 0);
+  signal s121: std_logic;
+  signal st: std_logic;
+  signal Reti: std_logic;
+  signal timer_Sel: std_logic;
   signal s122: std_logic;
   signal s123: std_logic;
-  signal s124: std_logic_vector(7 downto 0);
+  signal s124: std_logic_vector(3 downto 0);
+  signal outputToOutsideEnable: std_logic_vector(3 downto 0);
   signal s125: std_logic;
-  signal s126: std_logic_vector(7 downto 0);
-  signal s127: std_logic_vector(1 downto 0);
+  signal s126: std_logic;
+  signal s127: std_logic_vector(7 downto 0);
   signal s128: std_logic;
-  signal s129: std_logic;
-  signal s130: std_logic;
+  signal s129: std_logic_vector(7 downto 0);
+  signal s130: std_logic_vector(1 downto 0);
   signal s131: std_logic;
   signal s132: std_logic;
-  signal s133: std_logic_vector(2 downto 0);
-  signal s134: std_logic_vector(2 downto 0);
+  signal s133: std_logic;
+  signal s134: std_logic;
   signal s135: std_logic;
-  signal s136: std_logic;
-  signal s137: std_logic;
+  signal s136: std_logic_vector(2 downto 0);
+  signal s137: std_logic_vector(2 downto 0);
   signal s138: std_logic;
   signal s139: std_logic;
   signal s140: std_logic;
   signal s141: std_logic;
-  signal s142: std_logic_vector(7 downto 0);
+  signal s142: std_logic;
   signal s143: std_logic;
-  signal s144: std_logic;
+  signal s144: std_logic_vector(7 downto 0);
   signal s145: std_logic;
   signal s146: std_logic;
   signal s147: std_logic;
@@ -1276,11 +1314,46 @@ architecture Behavioral of main is
   signal s149: std_logic;
   signal s150: std_logic;
   signal s151: std_logic;
-  signal s152: std_logic_vector(2 downto 0);
-  signal s153: std_logic;
+  signal s152: std_logic;
+  signal s153: std_logic_vector(2 downto 0);
   signal s154: std_logic;
-  signal s155: std_logic_vector(15 downto 0);
+  signal s155: std_logic_vector(1 downto 0);
   signal s156: std_logic;
+  signal s157: std_logic;
+  signal s158: std_logic_vector(15 downto 0);
+  signal s159: std_logic;
+  signal InterLock: std_logic;
+  signal s160: std_logic;
+  signal intr: std_logic;
+  signal s161: std_logic;
+  signal s162: std_logic;
+  signal s163: std_logic;
+  signal s164: std_logic;
+  signal interEnable: std_logic;
+  signal s165: std_logic;
+  signal s166: std_logic_vector(15 downto 0);
+  signal s167: std_logic;
+  signal s168: std_logic;
+  signal s169: std_logic_vector(11 downto 0);
+  signal s170: std_logic;
+  signal s171: std_logic_vector(11 downto 0);
+  signal s172: std_logic;
+  signal s173: std_logic_vector(11 downto 0);
+  signal s174: std_logic;
+  signal s175: std_logic;
+  signal s176: std_logic_vector(15 downto 0);
+  signal s177: std_logic_vector(15 downto 0);
+  signal s178: std_logic;
+  signal s179: std_logic;
+  signal s180: std_logic;
+  signal s181: std_logic;
+  signal s182: std_logic;
+  signal s183: std_logic;
+  signal s184: std_logic;
+  signal s185: std_logic;
+  signal s186: std_logic;
+  signal s187: std_logic;
+  signal s188: std_logic;
 begin
   Din(0) <= uio_in(0);
   Din(1) <= uio_in(1);
@@ -1298,7 +1371,7 @@ begin
   Din(13) <= '0';
   Din(14) <= '0';
   Din(15) <= '0';
-  s122 <= NOT clk;
+  s125 <= NOT clk;
   gate0: entity work.DIG_Counter
     generic map (
       Bits => 2)
@@ -1306,33 +1379,52 @@ begin
       en => '1',
       C => clk,
       clr => rst_n,
-      p_out => s127,
-      ovf => s130);
-  s128 <= s127(0);
-  s129 <= s127(1);
-  s123 <= (s128 AND NOT s129);
-  s125 <= (NOT s128 AND s129);
-  s12 <= (s128 AND s129);
-  s28 <= NOT s12;
+      p_out => s130,
+      ovf => s133);
+  s131 <= s130(0);
+  s132 <= s130(1);
+  s126 <= (s131 AND NOT s132);
+  s128 <= (NOT s131 AND s132);
+  C <= (s131 AND s132);
+  s30 <= NOT C;
   gate1: entity work.DIG_Register_BUS
     generic map (
       Bits => 8)
     port map (
       D => ui_in,
-      C => s122,
-      en => s123,
-      Q => s124);
+      C => s125,
+      en => s126,
+      Q => s127);
   gate2: entity work.DIG_Register_BUS
     generic map (
       Bits => 8)
     port map (
       D => ui_in,
-      C => s122,
-      en => s125,
-      Q => s126);
-  s8(7 downto 0) <= s126;
-  s8(15 downto 8) <= s124;
-  gate3: entity work.singExtend
+      C => s125,
+      en => s128,
+      Q => s129);
+  gate3: entity work.DIG_Counter
+    generic map (
+      Bits => 8)
+    port map (
+      en => '0',
+      C => C,
+      clr => '0',
+      p_out => s144);
+  s162 <= NOT C;
+  s164 <= NOT C;
+  s170 <= NOT C;
+  s8(7 downto 0) <= s129;
+  s8(15 downto 8) <= s127;
+  s145 <= s144(0);
+  s146 <= s144(1);
+  s147 <= s144(2);
+  s148 <= s144(3);
+  s149 <= s144(4);
+  s150 <= s144(5);
+  s151 <= s144(6);
+  s152 <= s144(7);
+  gate4: entity work.singExtend
     port map (
       inst => s8,
       n4S => s4,
@@ -1341,49 +1433,49 @@ begin
   s9 <= s8(3 downto 0);
   s10 <= s8(7 downto 4);
   OPcode <= s8(15 downto 8);
-  s97 <= OPcode(6 downto 0);
+  s100 <= OPcode(6 downto 0);
   imm <= OPcode(7);
-  gate4: entity work.MUX_GATE_BUS_1
+  gate5: entity work.MUX_GATE_BUS_1
     generic map (
       Bits => 7)
     port map (
       sel => imm,
-      in_0 => s97,
+      in_0 => s100,
       in_1 => "0000000",
-      p_out => s98);
-  s105 <= s98(0);
-  s104 <= s98(1);
-  s103 <= s98(2);
-  s102 <= s98(3);
-  s101 <= s98(4);
-  s100 <= s98(5);
-  s99 <= s98(6);
-  gate5: entity work.controllogic
+      p_out => s101);
+  s108 <= s101(0);
+  s107 <= s101(1);
+  s106 <= s101(2);
+  s105 <= s101(3);
+  s104 <= s101(4);
+  s103 <= s101(5);
+  s102 <= s101(6);
+  gate6: entity work.controllogic
     port map (
-      A => s99,
-      B => s100,
-      C => s101,
-      D => s102,
-      E => s103,
-      F => s104,
-      G => s105,
-      muxb0 => s106,
-      muxb1 => s107,
-      muxb2 => s108,
+      A => s102,
+      B => s103,
+      C => s104,
+      D => s105,
+      E => s106,
+      F => s107,
+      G => s108,
+      muxb0 => s109,
+      muxb1 => s110,
+      muxb2 => s111,
       src2D => src2D,
-      aluop0 => s109,
-      aluop1 => s110,
-      aluop2 => s111,
-      aluop3 => s112,
-      aluop4 => s113,
+      aluop0 => s112,
+      aluop1 => s113,
+      aluop2 => s114,
+      aluop3 => s115,
+      aluop4 => s116,
       WE => WE,
       sf => sf,
       alu2D => alu2D,
-      iem0 => s114,
-      iem1 => s115,
-      br0 => s116,
-      br1 => s117,
-      br2 => s118,
+      iem0 => s117,
+      iem1 => s118,
+      br0 => s119,
+      br1 => s120,
+      br2 => s121,
       muxA => muxA,
       ld => ld,
       st => st,
@@ -1394,32 +1486,32 @@ begin
       Reti => Reti,
       randomSel => RandomNUMSel,
       timerSel => timer_Sel);
-  WDmux(0) <= (stPC OR ld OR RandomNUMSel);
-  WDmux(1) <= (ioR OR stPC);
-  WDmux(2) <= (timer_Sel OR RandomNUMSel);
-  muxB(0) <= s108;
-  muxB(1) <= s107;
-  muxB(2) <= s106;
-  aluOp(0) <= s113;
-  aluOp(1) <= s112;
-  aluOp(2) <= s111;
-  aluOp(3) <= s110;
-  aluOp(4) <= s109;
-  br(0) <= s118;
-  br(1) <= s117;
-  br(2) <= s116;
-  iem(0) <= s115;
-  iem(1) <= s114;
-  gate6: entity work.ImReg
+  s15(0) <= (stPC OR ld OR RandomNUMSel);
+  s15(1) <= (ioR OR stPC);
+  s15(2) <= (timer_Sel OR RandomNUMSel);
+  muxB(0) <= s111;
+  muxB(1) <= s110;
+  muxB(2) <= s109;
+  aluOp(0) <= s116;
+  aluOp(1) <= s115;
+  aluOp(2) <= s114;
+  aluOp(3) <= s113;
+  aluOp(4) <= s112;
+  br(0) <= s121;
+  br(1) <= s120;
+  br(2) <= s119;
+  iem(0) <= s118;
+  iem(1) <= s117;
+  gate7: entity work.ImReg
     port map (
       en => imm,
       iem => iem,
-      C => s12,
+      C => C,
       inst => s8,
       imm => s3);
-  s18 <= br(1 downto 0);
+  s20 <= br(1 downto 0);
   sel <= aluOp(3 downto 0);
-  gate7: entity work.MUX_GATE_BUS_1
+  gate8: entity work.MUX_GATE_BUS_1
     generic map (
       Bits => 16)
     port map (
@@ -1427,7 +1519,7 @@ begin
       in_0 => s0,
       in_1 => s1,
       p_out => s2);
-  gate8: entity work.MUX_GATE_BUS_3
+  gate9: entity work.MUX_GATE_BUS_3
     generic map (
       Bits => 16)
     port map (
@@ -1441,551 +1533,670 @@ begin
       in_6 => s5,
       in_7 => s6,
       p_out => s7);
-  gate9: entity work.DIG_RAMDualPort -- mem
+  gate10: entity work.DIG_RAMDualPort -- mem
     generic map (
       Bits => 16,
       AddrBits => 5)
     port map (
       A => s11,
       Din => s1,
-      str => st,
-      C => s12,
-      ld => ld,
-      D => s13);
-  gate10: entity work.MUX_GATE_BUS_3
+      str => s12,
+      C => C,
+      ld => s13,
+      D => s14);
+  gate11: entity work.MUX_GATE_BUS_3
     generic map (
       Bits => 16)
     port map (
-      sel => WDmux,
-      in_0 => s14,
-      in_1 => s15,
+      sel => s15,
+      in_0 => s16,
+      in_1 => s17,
       in_2 => Din,
-      in_3 => s16,
+      in_3 => s18,
       in_4 => timer_in,
       in_5 => RandomNUM,
       in_6 => "0000000000000000",
       in_7 => "0000000000000000",
-      p_out => s17);
-  gate11: entity work.MUX_GATE_2
+      p_out => s19);
+  gate12: entity work.MUX_GATE_2
     port map (
-      sel => s18,
+      sel => s20,
       in_0 => '0',
-      in_1 => s19,
-      in_2 => s20,
-      in_3 => s21,
-      p_out => s22);
-  s23 <= (s22 XOR br(2));
-  gate12: entity work.DIG_Register -- Carry
-    port map (
-      D => s24,
-      C => s12,
-      en => sf,
-      Q => s19);
-  gate13: entity work.DIG_Register -- Zero
-    port map (
-      D => s25,
-      C => s12,
-      en => sf,
-      Q => s20);
-  gate14: entity work.DIG_Register -- Neg
+      in_1 => s21,
+      in_2 => s22,
+      in_3 => s23,
+      p_out => s24);
+  s25 <= (s24 XOR br(2));
+  gate13: entity work.DIG_Register -- Carry
     port map (
       D => s26,
-      C => s12,
+      C => C,
       en => sf,
       Q => s21);
-  gate15: entity work.RegisterBlock
+  gate14: entity work.DIG_Register -- Zero
     port map (
-      DataIn => s17,
+      D => s27,
+      C => C,
+      en => sf,
+      Q => s22);
+  gate15: entity work.DIG_Register -- Neg
+    port map (
+      D => s28,
+      C => C,
+      en => sf,
+      Q => s23);
+  gate16: entity work.RegisterBlock
+    port map (
+      DataIn => s19,
       WE => WE,
-      clk => s12,
+      clk => C,
       src => s9,
       Dest => s10,
       RDest => s0,
       Rsrc => s1);
-  gate16: entity work.DIG_Register_BUS -- PC
+  gate17: entity work.DIG_Register_BUS -- PC
     generic map (
       Bits => 12)
     port map (
-      D => s27,
-      C => s28,
+      D => s29,
+      C => s30,
       en => '1',
       Q => pcOut);
-  gate17: entity work.MUX_GATE_BUS_1
+  gate18: entity work.MUX_GATE_BUS_1
     generic map (
       Bits => 12)
     port map (
       sel => p_abs,
-      in_0 => s31,
-      in_1 => s32,
-      p_out => s27);
-  s34 <= (s33 AND ioW);
-  gate18: entity work.DIG_Register_BUS
+      in_0 => s33,
+      in_1 => s34,
+      p_out => s35);
+  s37 <= (s36 AND ioW);
+  gate19: entity work.DIG_Register_BUS
     generic map (
       Bits => 4)
     port map (
-      D => s35,
-      C => s12,
-      en => s34,
+      D => s38,
+      C => C,
+      en => s37,
       Q => outputToOutside);
-  gate19: entity work.MUX_GATE_BUS_4
+  gate20: entity work.MUX_GATE_BUS_4
     generic map (
       Bits => 16)
     port map (
       sel => sel,
       in_0 => s7,
-      in_1 => s36,
-      in_2 => s37,
-      in_3 => s38,
-      in_4 => s39,
-      in_5 => s40,
-      in_6 => s41,
-      in_7 => s42,
-      in_8 => s43,
-      in_9 => s44,
-      in_10 => s45,
-      in_11 => s46,
-      in_12 => s47,
+      in_1 => s39,
+      in_2 => s40,
+      in_3 => s41,
+      in_4 => s42,
+      in_5 => s43,
+      in_6 => s44,
+      in_7 => s45,
+      in_8 => s46,
+      in_9 => s47,
+      in_10 => s48,
+      in_11 => s49,
+      in_12 => s50,
       in_13 => "0000000000000000",
       in_14 => "0000000000000000",
       in_15 => "0000000000000000",
-      p_out => s14);
-  gate20: entity work.MUX_GATE_4
+      p_out => s16);
+  gate21: entity work.MUX_GATE_4
     port map (
       sel => sel,
       in_0 => '0',
-      in_1 => s48,
-      in_2 => s49,
+      in_1 => s51,
+      in_2 => s52,
       in_3 => '0',
       in_4 => '0',
       in_5 => '0',
       in_6 => '0',
       in_7 => '0',
-      in_8 => s50,
-      in_9 => s51,
-      in_10 => s52,
+      in_8 => s53,
+      in_9 => s54,
+      in_10 => s55,
       in_11 => '0',
       in_12 => '0',
       in_13 => '0',
       in_14 => '0',
       in_15 => '0',
-      p_out => s24);
-  s53 <= (aluOp(4) AND s19);
-  gate21: entity work.DIG_Register_BUS -- seed
+      p_out => s26);
+  s56 <= (aluOp(4) AND s21);
+  gate22: entity work.DIG_Register_BUS -- seed
     generic map (
       Bits => 16)
     port map (
       D => s1,
-      C => s12,
-      en => s58,
-      Q => s59);
-  s58 <= (s61 AND ioW);
-  gate22: entity work.DIG_JK_FF
+      C => C,
+      en => s61,
+      Q => s62);
+  s61 <= (s64 AND ioW);
+  gate23: entity work.DIG_JK_FF
     generic map (
       Default => '0')
     port map (
-      J => s62,
-      C => s12,
-      K => s62,
-      Q => s56);
-  gate23: entity work.DIG_D_FF_AS
-    port map (
-      Set => s64,
-      D => s65,
-      C => s12,
-      Clr => s63,
-      Q => s66);
+      J => s65,
+      C => C,
+      K => s65,
+      Q => s59);
   gate24: entity work.DIG_D_FF_AS
     port map (
       Set => s67,
-      D => s66,
-      C => s12,
-      Clr => s63,
-      Q => s68);
+      D => s68,
+      C => C,
+      Clr => s66,
+      Q => s69);
   gate25: entity work.DIG_D_FF_AS
     port map (
-      Set => s69,
-      D => s68,
-      C => s12,
-      Clr => s63,
-      Q => s70);
+      Set => s70,
+      D => s69,
+      C => C,
+      Clr => s66,
+      Q => s71);
   gate26: entity work.DIG_D_FF_AS
     port map (
-      Set => s71,
-      D => s70,
-      C => s12,
-      Clr => s63,
-      Q => s72);
+      Set => s72,
+      D => s71,
+      C => C,
+      Clr => s66,
+      Q => s73);
   gate27: entity work.DIG_D_FF_AS
     port map (
-      Set => s73,
-      D => s72,
-      C => s12,
-      Clr => s63,
-      Q => s74);
+      Set => s74,
+      D => s73,
+      C => C,
+      Clr => s66,
+      Q => s75);
   gate28: entity work.DIG_D_FF_AS
     port map (
-      Set => s75,
-      D => s74,
-      C => s12,
-      Clr => s63,
-      Q => s76);
+      Set => s76,
+      D => s75,
+      C => C,
+      Clr => s66,
+      Q => s77);
   gate29: entity work.DIG_D_FF_AS
     port map (
-      Set => s77,
-      D => s76,
-      C => s12,
-      Clr => s63,
-      Q => s78);
+      Set => s78,
+      D => s77,
+      C => C,
+      Clr => s66,
+      Q => s79);
   gate30: entity work.DIG_D_FF_AS
     port map (
-      Set => s79,
-      D => s78,
-      C => s12,
-      Clr => s63,
-      Q => s80);
+      Set => s80,
+      D => s79,
+      C => C,
+      Clr => s66,
+      Q => s81);
   gate31: entity work.DIG_D_FF_AS
     port map (
-      Set => s81,
-      D => s80,
-      C => s12,
-      Clr => s63,
-      Q => s82);
+      Set => s82,
+      D => s81,
+      C => C,
+      Clr => s66,
+      Q => s83);
   gate32: entity work.DIG_D_FF_AS
     port map (
-      Set => s83,
-      D => s82,
-      C => s12,
-      Clr => s63,
-      Q => s84);
+      Set => s84,
+      D => s83,
+      C => C,
+      Clr => s66,
+      Q => s85);
   gate33: entity work.DIG_D_FF_AS
     port map (
-      Set => s85,
-      D => s84,
-      C => s12,
-      Clr => s63,
-      Q => s86);
+      Set => s86,
+      D => s85,
+      C => C,
+      Clr => s66,
+      Q => s87);
   gate34: entity work.DIG_D_FF_AS
     port map (
-      Set => s87,
-      D => s86,
-      C => s12,
-      Clr => s63,
-      Q => s88);
+      Set => s88,
+      D => s87,
+      C => C,
+      Clr => s66,
+      Q => s89);
   gate35: entity work.DIG_D_FF_AS
     port map (
-      Set => s89,
-      D => s88,
-      C => s12,
-      Clr => s63,
-      Q => s90);
+      Set => s90,
+      D => s89,
+      C => C,
+      Clr => s66,
+      Q => s91);
   gate36: entity work.DIG_D_FF_AS
     port map (
-      Set => s91,
-      D => s90,
-      C => s12,
-      Clr => s63,
-      Q => s92);
+      Set => s92,
+      D => s91,
+      C => C,
+      Clr => s66,
+      Q => s93);
   gate37: entity work.DIG_D_FF_AS
     port map (
-      Set => s93,
-      D => s92,
-      C => s12,
-      Clr => s63,
-      Q => s94);
+      Set => s94,
+      D => s93,
+      C => C,
+      Clr => s66,
+      Q => s95);
   gate38: entity work.DIG_D_FF_AS
     port map (
-      Set => s95,
-      D => s94,
-      C => s12,
-      Clr => s63,
-      Q => s96);
-  s55 <= (s12 AND s58);
-  s120 <= (s119 AND ioW);
-  gate39: entity work.DIG_Register_BUS
+      Set => s96,
+      D => s95,
+      C => C,
+      Clr => s66,
+      Q => s97);
+  gate39: entity work.DIG_D_FF_AS
+    port map (
+      Set => s98,
+      D => s97,
+      C => C,
+      Clr => s66,
+      Q => s99);
+  s58 <= (C AND s61);
+  s123 <= (s122 AND ioW);
+  gate40: entity work.DIG_Register_BUS
     generic map (
       Bits => 4)
     port map (
-      D => s121,
-      C => s12,
-      en => s120,
+      D => s124,
+      C => C,
+      en => s123,
       Q => outputToOutsideEnable);
-  s132 <= (s131 AND ioW);
-  gate40: entity work.DIG_Register_BUS -- prescaler
+  s135 <= (s134 AND ioW);
+  gate41: entity work.DIG_Register_BUS -- prescaler
     generic map (
       Bits => 3)
     port map (
-      D => s133,
-      C => s12,
-      en => s132,
-      Q => s134);
-  s136 <= (s135 AND ioW);
-  gate41: entity work.DIG_Register -- timer_is_active
+      D => s136,
+      C => C,
+      en => s135,
+      Q => s137);
+  s139 <= (s138 AND ioW);
+  gate42: entity work.DIG_Register -- timer_is_active
     port map (
-      D => s137,
-      C => s12,
-      en => s136,
-      Q => s138);
-  gate42: entity work.DIG_JK_FF
+      D => s140,
+      C => C,
+      en => s139);
+  gate43: entity work.DIG_JK_FF -- Reset
     generic map (
       Default => '0')
     port map (
-      J => s140,
-      C => s12,
+      J => s142,
+      C => C,
       K => '1',
-      Q => s141);
-  s140 <= (s1(0) AND (s139 AND ioW));
-  gate43: entity work.DIG_Counter
-    generic map (
-      Bits => 8)
+      Q => s143);
+  s142 <= (s1(0) AND (s141 AND ioW));
+  gate44: entity work.MUX_GATE_3
     port map (
-      en => s138,
-      C => s12,
-      clr => s141,
-      p_out => s142);
-  gate44: entity work.DIG_RAMDualPort -- mem
+      sel => s153,
+      in_0 => s145,
+      in_1 => s146,
+      in_2 => s147,
+      in_3 => s148,
+      in_4 => s149,
+      in_5 => s150,
+      in_6 => s151,
+      in_7 => s152,
+      p_out => s154);
+  gate45: entity work.DIG_RAMDualPort -- mem
     generic map (
       Bits => 16,
-      AddrBits => 3)
+      AddrBits => 2)
     port map (
-      A => s152,
+      A => s155,
       Din => s1,
-      str => s153,
-      C => s12,
-      ld => s154,
-      D => s155);
-  s153 <= (s156 AND st);
-  s154 <= (s156 AND ld);
-  FlagOut(0) <= s19;
-  FlagOut(1) <= s20;
-  FlagOut(2) <= s21;
+      str => s156,
+      C => C,
+      ld => s157,
+      D => s158);
+  s156 <= (s159 AND st);
+  s157 <= (s159 AND ld);
+  intr <= (NOT InterLock AND NOT imm AND s160 AND NOT '0');
+  gate46: entity work.DIG_D_FF -- *
+    generic map (
+      Default => '0')
+    port map (
+      D => s161,
+      C => s162,
+      Q => InterLock);
+  s161 <= ((InterLock AND NOT Reti) OR intr);
+  gate47: entity work.DIG_D_FF -- *
+    generic map (
+      Default => '0')
+    port map (
+      D => s163,
+      C => s164,
+      Q => s160);
+  s163 <= ((s160 AND NOT Reti) OR ((NOT InterLock AND (NOT s180 AND s178)) AND interEnable));
+  gate48: entity work.DIG_Register_BUS -- intEn
+    generic map (
+      Bits => 16)
+    port map (
+      D => s1,
+      C => C,
+      en => s165,
+      Q => s166);
+  s165 <= (s167 AND ioW);
+  gate49: entity work.DIG_Register_BUS
+    generic map (
+      Bits => 12)
+    port map (
+      D => s35,
+      C => s170,
+      en => s168,
+      Q => s171);
+  s172 <= (interEnable AND Reti);
+  s175 <= (s174 AND ioW);
+  gate50: entity work.DIG_Register_BUS -- target
+    generic map (
+      Bits => 16)
+    port map (
+      D => s1,
+      C => C,
+      en => s175,
+      Q => s176);
+  gate51: entity work.DIG_Register -- Reload
+    port map (
+      D => s181,
+      C => C,
+      en => s182,
+      Q => s183);
+  s182 <= (s184 AND ioW);
+  s13 <= (ld AND NOT s159);
+  s12 <= (st AND NOT s159);
+  gate52: entity work.MUX_GATE_BUS_1
+    generic map (
+      Bits => 12)
+    port map (
+      sel => rst_n,
+      in_0 => "000000000000",
+      in_1 => s173,
+      p_out => s29);
+  FlagOut(0) <= s21;
+  FlagOut(1) <= s22;
+  FlagOut(2) <= s23;
   FlagOut(15 downto 3) <= "0000000000000";
-  gate45: entity work.COMP_GATE_SIGNED
+  gate53: entity work.COMP_GATE_SIGNED
     generic map (
       Bits => 16)
     port map (
-      a => s14,
-      b => "0000000000000101",
-      eq => s33);
-  s38 <= (s2 AND s7);
-  s39 <= (s2 OR s7);
-  s40 <= (s2 XOR s7);
-  gate46: entity work.COMP_GATE_SIGNED
-    generic map (
-      Bits => 16)
-    port map (
-      a => s14,
-      b => "0000000000000000",
-      eq => s25);
-  gate47: entity work.LSL
-    port map (
-      Di => s2,
-      Ci => s53,
-      Do => s43,
-      Co => s50);
-  gate48: entity work.LSR
-    port map (
-      Di => s2,
-      Ci => s53,
-      Do => s44,
-      Co => s51);
-  gate49: entity work.ASR
-    port map (
-      Di => s2,
-      C => s52,
-      Do => s45);
-  gate50: entity work.SWAP
-    port map (
-      Di => s2,
-      Do => s46);
-  gate51: entity work.SWAPN
-    port map (
-      Di => s2,
-      Do => s47);
-  s41 <= NOT s2;
-  gate52: entity work.DIG_Neg
-    generic map (
-      Bits => 16)
-    port map (
-      p_in => s2,
-      p_out => s42);
-  gate53: entity work.MUX_GATE_BUS_1
-    generic map (
-      Bits => 16)
-    port map (
-      sel => s58,
-      in_0 => "0000000000000000",
-      in_1 => s59,
-      p_out => s60);
+      a => s16,
+      b => "0000000000001000",
+      eq => s36);
+  s41 <= (s2 AND s7);
+  s42 <= (s2 OR s7);
+  s43 <= (s2 XOR s7);
   gate54: entity work.COMP_GATE_SIGNED
     generic map (
       Bits => 16)
     port map (
-      a => s14,
-      b => "0000000000001000",
-      eq => s61);
-  s65 <= (s76 XOR (s86 XOR (s90 XOR s94)));
-  RandomNUM(0) <= s66;
-  RandomNUM(1) <= s68;
-  RandomNUM(2) <= s70;
-  RandomNUM(3) <= s72;
-  RandomNUM(4) <= s74;
-  RandomNUM(5) <= s76;
-  RandomNUM(6) <= s78;
-  RandomNUM(7) <= s80;
-  RandomNUM(8) <= s82;
-  RandomNUM(9) <= s84;
-  RandomNUM(10) <= s86;
-  RandomNUM(11) <= s88;
-  RandomNUM(12) <= s90;
-  RandomNUM(13) <= s92;
-  RandomNUM(14) <= s94;
-  RandomNUM(15) <= s96;
-  gate55: entity work.COMP_GATE_SIGNED
+      a => s16,
+      b => "0000000000000000",
+      eq => s27);
+  s44 <= NOT s2;
+  gate55: entity work.DIG_Neg
     generic map (
       Bits => 16)
     port map (
-      a => s14,
-      b => "0000000000000110",
-      eq => s119);
+      p_in => s2,
+      p_out => s45);
+  gate56: entity work.MUX_GATE_BUS_1
+    generic map (
+      Bits => 16)
+    port map (
+      sel => s61,
+      in_0 => "0000000000000000",
+      in_1 => s62,
+      p_out => s63);
+  gate57: entity work.COMP_GATE_SIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
+      b => "0000000000001000",
+      eq => s64);
+  s68 <= (s79 XOR (s89 XOR (s93 XOR s97)));
+  RandomNUM(0) <= s69;
+  RandomNUM(1) <= s71;
+  RandomNUM(2) <= s73;
+  RandomNUM(3) <= s75;
+  RandomNUM(4) <= s77;
+  RandomNUM(5) <= s79;
+  RandomNUM(6) <= s81;
+  RandomNUM(7) <= s83;
+  RandomNUM(8) <= s85;
+  RandomNUM(9) <= s87;
+  RandomNUM(10) <= s89;
+  RandomNUM(11) <= s91;
+  RandomNUM(12) <= s93;
+  RandomNUM(13) <= s95;
+  RandomNUM(14) <= s97;
+  RandomNUM(15) <= s99;
+  gate58: entity work.COMP_GATE_SIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
+      b => "0000000000001001",
+      eq => s122);
   uio_out(3 downto 0) <= pcOut(11 downto 8);
   uio_out(7 downto 4) <= outputToOutside;
-  uio_oe(3 downto 0) <= "0000";
+  uio_oe(3 downto 0) <= "1111";
   uio_oe(7 downto 4) <= outputToOutsideEnable;
-  gate56: entity work.DIG_Add
+  gate59: entity work.DIG_Add
     generic map (
       Bits => 16)
     port map (
       a => s2,
       b => s7,
-      c_i => s53,
-      s => s36,
-      c_o => s48);
-  gate57: entity work.DIG_Sub
+      c_i => s56,
+      s => s39,
+      c_o => s51);
+  gate60: entity work.DIG_Sub
     generic map (
       Bits => 16)
     port map (
       a => s2,
       b => s7,
-      c_i => s53,
-      s => s37,
-      c_o => s49);
-  gate58: entity work.DIG_Add
+      c_i => s56,
+      s => s40,
+      c_o => s52);
+  gate61: entity work.DIG_Add
     generic map (
       Bits => 12)
     port map (
       a => pcOut,
       b => "000000000001",
       c_i => '0',
-      s => s29);
-  gate59: entity work.COMP_GATE_SIGNED
+      s => s31);
+  gate62: entity work.COMP_GATE_SIGNED
     generic map (
       Bits => 16)
     port map (
-      a => s14,
-      b => "0000000000000001",
-      eq => s131);
-  gate60: entity work.COMP_GATE_SIGNED
-    generic map (
-      Bits => 16)
-    port map (
-      a => s14,
+      a => s16,
       b => "0000000000000010",
-      eq => s135);
-  gate61: entity work.COMP_GATE_SIGNED
+      eq => s134);
+  gate63: entity work.COMP_GATE_SIGNED
     generic map (
       Bits => 16)
     port map (
-      a => s14,
+      a => s16,
+      b => "0000000000000001",
+      eq => s138);
+  gate64: entity work.COMP_GATE_SIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
+      b => "0000000000000110",
+      eq => s141);
+  gate65: entity work.COMP_GATE_UNSIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
+      b => "0000000000000111",
+      eq => s167);
+  gate66: entity work.COMP_GATE_SIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
       b => "0000000000000011",
-      eq => s139);
-  s11 <= s14(4 downto 0);
-  s35 <= s1(3 downto 0);
-  s26 <= s14(15);
-  s32 <= s14(11 downto 0);
-  s121 <= s1(3 downto 0);
+      eq => s174);
+  gate67: entity work.COMP_GATE_UNSIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s176,
+      b => "0000000000000000",
+      gr => s179,
+      eq => s180);
+  gate68: entity work.COMP_GATE_SIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s16,
+      b => "0000000000000101",
+      eq => s184);
+  s50(3 downto 0) <= s2(7 downto 4);
+  s50(7 downto 4) <= s2(3 downto 0);
+  s50(11 downto 8) <= s2(15 downto 12);
+  s50(15 downto 12) <= s2(11 downto 8);
+  s49(7 downto 0) <= s2(15 downto 8);
+  s49(15 downto 8) <= s2(7 downto 0);
+  s47(14 downto 0) <= s2(15 downto 1);
+  s47(15) <= s56;
+  s46(0) <= s56;
+  s46(15 downto 1) <= s2(14 downto 0);
+  s11 <= s16(4 downto 0);
+  s38 <= s1(3 downto 0);
+  s28 <= s16(15);
+  s34 <= s16(11 downto 0);
+  s124 <= s1(3 downto 0);
   uo_out <= pcOut(7 downto 0);
-  s133 <= s1(2 downto 0);
-  s137 <= s1(0);
-  s143 <= s142(0);
-  s144 <= s142(1);
-  s145 <= s142(2);
-  s146 <= s142(3);
-  s147 <= s142(4);
-  s148 <= s142(5);
-  s149 <= s142(6);
-  s150 <= s142(7);
-  s152 <= s14(2 downto 0);
-  s156 <= s14(5);
-  s16(11 downto 0) <= s29;
-  s16(15 downto 12) <= "0000";
-  gate62: entity work.DIG_Add
+  s136 <= s1(2 downto 0);
+  s140 <= s1(0);
+  s155 <= s16(1 downto 0);
+  s159 <= s16(5);
+  interEnable <= s166(0);
+  s181 <= s1(0);
+  s55 <= s2(0);
+  s188 <= s2(15);
+  s54 <= s2(0);
+  s53 <= s2(15);
+  s18(11 downto 0) <= s31;
+  s18(15 downto 12) <= "0000";
+  gate69: entity work.DIG_Add
     generic map (
       Bits => 12)
     port map (
-      a => s29,
-      b => s32,
+      a => s31,
+      b => s34,
       c_i => '0',
-      s => s30);
-  gate63: entity work.MUX_GATE_3
-    port map (
-      sel => s134,
-      in_0 => s143,
-      in_1 => s144,
-      in_2 => s145,
-      in_3 => s146,
-      in_4 => s147,
-      in_5 => s148,
-      in_6 => s149,
-      in_7 => s150,
-      p_out => s151);
-  gate64: entity work.MUX_GATE_BUS_1
+      s => s32);
+  gate70: entity work.MUX_GATE_BUS_1
     generic map (
       Bits => 16)
     port map (
-      sel => s156,
-      in_0 => s13,
-      in_1 => s155,
-      p_out => s15);
-  s64 <= s60(0);
-  s67 <= s60(1);
-  s69 <= s60(2);
-  s71 <= s60(3);
-  s73 <= s60(4);
-  s75 <= s60(5);
-  s77 <= s60(6);
-  s79 <= s60(7);
-  s81 <= s60(8);
-  s83 <= s60(9);
-  s85 <= s60(10);
-  s87 <= s60(11);
-  s89 <= s60(12);
-  s91 <= s60(13);
-  s93 <= s60(14);
-  s95 <= s60(15);
-  gate65: entity work.MUX_GATE_BUS_1
+      sel => s159,
+      in_0 => s14,
+      in_1 => s158,
+      p_out => s17);
+  s168 <= (intr AND interEnable);
+  gate71: entity work.MUX_GATE_BUS_1
+    generic map (
+      Bits => 16)
+    port map (
+      sel => s179,
+      in_0 => "0000000000000000",
+      in_1 => s176,
+      p_out => s177);
+  s48(13 downto 0) <= s2(14 downto 1);
+  s48(14) <= s188;
+  s48(15) <= s188;
+  s67 <= s63(0);
+  s70 <= s63(1);
+  s72 <= s63(2);
+  s74 <= s63(3);
+  s76 <= s63(4);
+  s78 <= s63(5);
+  s80 <= s63(6);
+  s82 <= s63(7);
+  s84 <= s63(8);
+  s86 <= s63(9);
+  s88 <= s63(10);
+  s90 <= s63(11);
+  s92 <= s63(12);
+  s94 <= s63(13);
+  s96 <= s63(14);
+  s98 <= s63(15);
+  gate72: entity work.MUX_GATE_BUS_1
     generic map (
       Bits => 12)
     port map (
-      sel => s23,
-      in_0 => s29,
-      in_1 => s30,
-      p_out => s31);
-  gate66: entity work.DIG_Counter
+      sel => s25,
+      in_0 => s31,
+      in_1 => s32,
+      p_out => s33);
+  gate73: entity work.MUX_GATE_BUS_1
     generic map (
-      Bits => 16)
+      Bits => 12)
     port map (
-      en => s138,
-      C => s151,
-      clr => s141,
-      p_out => timer_in);
-  gate67: entity work.DIG_D_FF_AS
+      sel => s168,
+      in_0 => s35,
+      in_1 => "000000000010",
+      p_out => s169);
+  gate74: entity work.MUX_GATE_BUS_1
+    generic map (
+      Bits => 12)
+    port map (
+      sel => s172,
+      in_0 => s169,
+      in_1 => s171,
+      p_out => s173);
+  gate75: entity work.DIG_D_FF_AS
     port map (
       Set => '0',
-      D => s54,
-      C => s55,
-      Clr => s56,
-      Q => s57,
-      notQ => s54);
-  s62 <= (s57 OR s56);
-  s63 <= (s58 AND NOT s62);
+      D => s57,
+      C => s58,
+      Clr => s59,
+      Q => s60,
+      notQ => s57);
+  s65 <= (s60 OR s59);
+  s66 <= (s61 AND NOT s65);
+  gate76: entity work.COMP_GATE_UNSIGNED
+    generic map (
+      Bits => 16)
+    port map (
+      a => s177,
+      b => timer_in,
+      eq => s178);
+  s185 <= (NOT s180 AND ((s178 AND s183) OR s143));
+  gate77: entity work.MUX_GATE_BUS_1
+    generic map (
+      Bits => 3)
+    port map (
+      sel => s185,
+      in_0 => s137,
+      in_1 => "000",
+      p_out => s153);
+  gate78: entity work.MUX_GATE_1
+    port map (
+      sel => s187,
+      in_0 => s154,
+      in_1 => '1',
+      p_out => s186);
+  s187 <= (InterLock OR ((s178 AND NOT s180) AND NOT s185));
+  gate79: entity work.DIG_CounterPreset
+    generic map (
+      Bits => 16,
+      maxValue => 0)
+    port map (
+      en => '0',
+      C => s186,
+      dir => '0',
+      p_in => "0000000000000000",
+      ld => s185,
+      clr => '0',
+      p_out => timer_in);
 end Behavioral;
