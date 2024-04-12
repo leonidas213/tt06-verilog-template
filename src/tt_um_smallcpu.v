@@ -788,6 +788,60 @@ module DIG_D_FF_AS_1bit
     end
 endmodule
 
+module Mux_8x1
+(
+    input [2:0] sel,
+    input in_0,
+    input in_1,
+    input in_2,
+    input in_3,
+    input in_4,
+    input in_5,
+    input in_6,
+    input in_7,
+    output reg out
+);
+    always @ (*) begin
+        case (sel)
+            3'h0: out = in_0;
+            3'h1: out = in_1;
+            3'h2: out = in_2;
+            3'h3: out = in_3;
+            3'h4: out = in_4;
+            3'h5: out = in_5;
+            3'h6: out = in_6;
+            3'h7: out = in_7;
+            default:
+                out = 'h0;
+        endcase
+    end
+endmodule
+
+module DIG_D_FF_1bit
+#(
+    parameter Default = 0
+)
+(
+   input D,
+   input C,
+   output Q,
+   output \~Q
+);
+    reg state;
+
+    assign Q = state;
+    assign \~Q = ~state;
+
+    always @ (posedge C) begin
+        state <= D;
+    end
+
+    initial begin
+        state = Default;
+    end
+endmodule
+
+
 module CompSigned #(
     parameter Bits = 1
 )
@@ -803,76 +857,6 @@ module CompSigned #(
     assign \< = $signed(a) < $signed(b);
 endmodule
 
-
-// Moves the data word to the left to higher bits, so it multiplies 
-// by two. The current carry bit is pushed in at the bottom, and 
-// the most significant bit is output as a carry bit.
-module LSL (
-  input [15:0] Di, // data input
-  input Ci, // carry input
-  output [15:0] Do, // data output
-  output Co // carry output
-
-);
-  assign Do[0] = Ci;
-  assign Do[15:1] = Di[14:0];
-  assign Co = Di[15];
-endmodule
-
-// Shift right. So a division by two.
-// The carry bit is inserted at the top. And the least 
-// significant bit is output as a new carry bit.
-module LSR (
-  input [15:0] Di, // data input
-  input Ci, // carry input
-  output [15:0] Do, // data output
-  output Co // carry output
-
-);
-  assign Do[14:0] = Di[15:1];
-  assign Do[15] = Ci;
-  assign Co = Di[0];
-endmodule
-
-// Arithmetic shift right. An unsigned division by two. 
-// The lower bit is output as the carry bit, while the 
-// uppermost bit remains unchanged in order to 
-// obtain the sign.
-module ASR (
-  input [15:0] Di, // data input
-  output C, // carry output
-  output [15:0] Do // data output
-
-);
-  wire s0;
-  assign C = Di[0];
-  assign s0 = Di[15];
-  assign Do[13:0] = Di[14:1];
-  assign Do[14] = s0;
-  assign Do[15] = s0;
-endmodule
-
-// Swaps the high-byte and the low-byte.
-module SWAP (
-  input [15:0] Di, // data input
-  output [15:0] Do // data output
-
-);
-  assign Do[7:0] = Di[15:8];
-  assign Do[15:8] = Di[7:0];
-endmodule
-
-// Swaps the 4-bit nibble in the high- and the low-byte.
-module SWAPN (
-  input [15:0] Di, // Data input
-  output [15:0] Do // Data output
-
-);
-  assign Do[3:0] = Di[7:4];
-  assign Do[7:4] = Di[3:0];
-  assign Do[11:8] = Di[15:12];
-  assign Do[15:12] = Di[11:8];
-endmodule
 
 module DIG_Neg #(
     parameter Bits = 1
@@ -922,32 +906,87 @@ module DIG_Sub #(
 endmodule
 
 
-module Mux_8x1
+module CompUnsigned #(
+    parameter Bits = 1
+)
 (
-    input [2:0] sel,
+    input [(Bits -1):0] a,
+    input [(Bits -1):0] b,
+    output \> ,
+    output \= ,
+    output \<
+);
+    assign \> = a > b;
+    assign \= = a == b;
+    assign \< = a < b;
+endmodule
+
+
+module Mux_2x1
+(
+    input [0:0] sel,
     input in_0,
     input in_1,
-    input in_2,
-    input in_3,
-    input in_4,
-    input in_5,
-    input in_6,
-    input in_7,
     output reg out
 );
     always @ (*) begin
         case (sel)
-            3'h0: out = in_0;
-            3'h1: out = in_1;
-            3'h2: out = in_2;
-            3'h3: out = in_3;
-            3'h4: out = in_4;
-            3'h5: out = in_5;
-            3'h6: out = in_6;
-            3'h7: out = in_7;
+            1'h0: out = in_0;
+            1'h1: out = in_1;
             default:
                 out = 'h0;
         endcase
+    end
+endmodule
+
+
+module DIG_CounterPreset #(
+    parameter Bits = 2,
+    parameter maxValue = 4
+)
+(
+    input C,
+    input en,
+    input clr,
+    input dir,
+    input [(Bits-1):0] in,
+    input ld,
+    output [(Bits-1):0] out,
+    output ovf
+);
+
+    reg [(Bits-1):0] count = 'h0;
+
+    function [(Bits-1):0] maxVal (input [(Bits-1):0] maxv);
+        if (maxv == 0)
+            maxVal = (1 << Bits) - 1;
+        else
+            maxVal = maxv;
+    endfunction
+
+    assign out = count;
+    assign ovf = ((count == maxVal(maxValue) & dir == 1'b0)
+                  | (count == 'b0 & dir == 1'b1))? en : 1'b0;
+
+    always @ (posedge C) begin
+        if (clr == 1'b1)
+            count <= 'h0;
+        else if (ld == 1'b1)
+            count <= in;
+        else if (en == 1'b1) begin
+            if (dir == 1'b0) begin
+                if (count == maxVal(maxValue))
+                    count <= 'h0;
+                else
+                    count <= count + 1'b1;
+            end
+            else begin
+                if (count == 'h0)
+                    count <= maxVal(maxValue);
+                else
+                    count <= count - 1;
+            end
+        end
     end
 endmodule
 
@@ -958,6 +997,7 @@ module tt_um_smallcpu (
   input ena,
   input clk,
   input rst_n,
+  input Reset, // triggers an interrupt
   output [7:0] uo_out,
   output [7:0] uio_out,
   output [7:0] uio_oe
@@ -977,50 +1017,48 @@ module tt_um_smallcpu (
   wire [3:0] s10;
   wire [7:0] OPcode;
   wire [4:0] s11;
-  wire st;
   wire s12;
-  wire ld;
-  wire [15:0] s13;
-  wire [2:0] WDmux;
+  wire C;
+  wire s13;
   wire [15:0] s14;
-  wire [15:0] s15;
-  wire [15:0] Din;
+  wire [2:0] s15;
   wire [15:0] s16;
+  wire [15:0] s17;
+  wire [15:0] Din;
+  wire [15:0] s18;
   wire [15:0] timer_in;
   wire [15:0] RandomNUM;
-  wire [15:0] s17;
-  wire [1:0] s18;
-  wire s19;
-  wire s20;
+  wire [15:0] s19;
+  wire [1:0] s20;
   wire s21;
   wire s22;
   wire s23;
-  wire [2:0] br;
   wire s24;
-  wire sf;
   wire s25;
+  wire [2:0] br;
   wire s26;
+  wire sf;
+  wire s27;
+  wire s28;
   wire [15:0] FlagOut;
   wire WE;
   wire imm;
   wire [1:0] iem;
-  wire [11:0] s27;
-  wire s28;
-  wire [11:0] pcOut;
   wire [11:0] s29;
-  wire [11:0] s30;
+  wire s30;
+  wire [11:0] pcOut;
   wire [11:0] s31;
-  wire abs;
   wire [11:0] s32;
-  wire s33;
+  wire [11:0] s33;
+  wire abs;
+  wire [11:0] s34;
+  wire [11:0] s35;
+  wire s36;
   wire ioW;
-  wire s34;
-  wire [3:0] s35;
+  wire s37;
+  wire [3:0] s38;
   wire [3:0] outputToOutside;
   wire [3:0] sel;
-  wire [15:0] s36;
-  wire [15:0] s37;
-  wire [15:0] s38;
   wire [15:0] s39;
   wire [15:0] s40;
   wire [15:0] s41;
@@ -1030,23 +1068,23 @@ module tt_um_smallcpu (
   wire [15:0] s45;
   wire [15:0] s46;
   wire [15:0] s47;
-  wire s48;
-  wire s49;
-  wire s50;
+  wire [15:0] s48;
+  wire [15:0] s49;
+  wire [15:0] s50;
   wire s51;
   wire s52;
-  wire [4:0] aluOp;
   wire s53;
   wire s54;
   wire s55;
+  wire [4:0] aluOp;
   wire s56;
   wire s57;
   wire s58;
-  wire [15:0] s59;
-  wire [15:0] s60;
+  wire s59;
+  wire s60;
   wire s61;
-  wire s62;
-  wire s63;
+  wire [15:0] s62;
+  wire [15:0] s63;
   wire s64;
   wire s65;
   wire s66;
@@ -1080,14 +1118,15 @@ module tt_um_smallcpu (
   wire s94;
   wire s95;
   wire s96;
+  wire s97;
+  wire s98;
+  wire s99;
   wire stPC;
+  wire ld;
   wire RandomNUMSel;
   wire ioR;
-  wire [6:0] s97;
-  wire [6:0] s98;
-  wire s99;
-  wire s100;
-  wire s101;
+  wire [6:0] s100;
+  wire [6:0] s101;
   wire s102;
   wire s103;
   wire s104;
@@ -1095,47 +1134,48 @@ module tt_um_smallcpu (
   wire s106;
   wire s107;
   wire s108;
-  wire src2D;
   wire s109;
   wire s110;
   wire s111;
+  wire src2D;
   wire s112;
   wire s113;
-  wire alu2D;
   wire s114;
   wire s115;
   wire s116;
+  wire alu2D;
   wire s117;
   wire s118;
-  wire Reti;
-  wire timer_Sel;
   wire s119;
   wire s120;
-  wire [3:0] s121;
-  wire [3:0] outputToOutsideEnable;
+  wire s121;
+  wire st;
+  wire Reti;
+  wire timer_Sel;
   wire s122;
   wire s123;
-  wire [7:0] s124;
+  wire [3:0] s124;
+  wire [3:0] outputToOutsideEnable;
   wire s125;
-  wire [7:0] s126;
-  wire [1:0] s127;
+  wire s126;
+  wire [7:0] s127;
   wire s128;
-  wire s129;
-  wire s130;
+  wire [7:0] s129;
+  wire [1:0] s130;
   wire s131;
   wire s132;
-  wire [2:0] s133;
-  wire [2:0] s134;
+  wire s133;
+  wire s134;
   wire s135;
-  wire s136;
-  wire s137;
+  wire [2:0] s136;
+  wire [2:0] s137;
   wire s138;
   wire s139;
   wire s140;
   wire s141;
-  wire [7:0] s142;
+  wire s142;
   wire s143;
-  wire s144;
+  wire [7:0] s144;
   wire s145;
   wire s146;
   wire s147;
@@ -1143,11 +1183,46 @@ module tt_um_smallcpu (
   wire s149;
   wire s150;
   wire s151;
-  wire [1:0] s152;
-  wire s153;
+  wire s152;
+  wire [2:0] s153;
   wire s154;
-  wire [15:0] s155;
+  wire [1:0] s155;
   wire s156;
+  wire s157;
+  wire [15:0] s158;
+  wire s159;
+  wire InterLock;
+  wire s160;
+  wire intr;
+  wire s161;
+  wire s162;
+  wire s163;
+  wire s164;
+  wire interEnable;
+  wire s165;
+  wire [15:0] s166;
+  wire s167;
+  wire s168;
+  wire [11:0] s169;
+  wire s170;
+  wire [11:0] s171;
+  wire s172;
+  wire [11:0] s173;
+  wire s174;
+  wire s175;
+  wire [15:0] s176;
+  wire [15:0] s177;
+  wire s178;
+  wire s179;
+  wire s180;
+  wire s181;
+  wire s182;
+  wire s183;
+  wire s184;
+  wire s185;
+  wire s186;
+  wire s187;
+  wire s188;
   assign Din[0] = uio_in[0];
   assign Din[1] = uio_in[1];
   assign Din[2] = uio_in[2];
@@ -1164,7 +1239,7 @@ module tt_um_smallcpu (
   assign Din[13] = 1'b0;
   assign Din[14] = 1'b0;
   assign Din[15] = 1'b0;
-  assign s122 = ~ clk;
+  assign s125 = ~ clk;
   DIG_Counter_Nbit #(
     .Bits(2)
   )
@@ -1172,36 +1247,56 @@ module tt_um_smallcpu (
     .en( 1'b1 ),
     .C( clk ),
     .clr( rst_n ),
-    .out( s127 ),
-    .ovf( s130 )
+    .out( s130 ),
+    .ovf( s133 )
   );
-  assign s128 = s127[0];
-  assign s129 = s127[1];
-  assign s123 = (s128 & ~ s129);
-  assign s125 = (~ s128 & s129);
-  assign s12 = (s128 & s129);
-  assign s28 = ~ s12;
+  assign s131 = s130[0];
+  assign s132 = s130[1];
+  assign s126 = (s131 & ~ s132);
+  assign s128 = (~ s131 & s132);
+  assign C = (s131 & s132);
+  assign s30 = ~ C;
   DIG_Register_BUS #(
     .Bits(8)
   )
   DIG_Register_BUS_i1 (
     .D( ui_in ),
-    .C( s122 ),
-    .en( s123 ),
-    .Q( s124 )
+    .C( s125 ),
+    .en( s126 ),
+    .Q( s127 )
   );
   DIG_Register_BUS #(
     .Bits(8)
   )
   DIG_Register_BUS_i2 (
     .D( ui_in ),
-    .C( s122 ),
-    .en( s125 ),
-    .Q( s126 )
+    .C( s125 ),
+    .en( s128 ),
+    .Q( s129 )
   );
-  assign s8[7:0] = s126;
-  assign s8[15:8] = s124;
-  singExtend singExtend_i3 (
+  DIG_Counter_Nbit #(
+    .Bits(8)
+  )
+  DIG_Counter_Nbit_i3 (
+    .en( 1'b0 ),
+    .C( C ),
+    .clr( 1'b0 ),
+    .out( s144 )
+  );
+  assign s162 = ~ C;
+  assign s164 = ~ C;
+  assign s170 = ~ C;
+  assign s8[7:0] = s129;
+  assign s8[15:8] = s127;
+  assign s145 = s144[0];
+  assign s146 = s144[1];
+  assign s147 = s144[2];
+  assign s148 = s144[3];
+  assign s149 = s144[4];
+  assign s150 = s144[5];
+  assign s151 = s144[6];
+  assign s152 = s144[7];
+  singExtend singExtend_i4 (
     .inst( s8 ),
     .\4S ( s4 ),
     .\8SD ( s5 ),
@@ -1210,49 +1305,49 @@ module tt_um_smallcpu (
   assign s9 = s8[3:0];
   assign s10 = s8[7:4];
   assign OPcode = s8[15:8];
-  assign s97 = OPcode[6:0];
+  assign s100 = OPcode[6:0];
   assign imm = OPcode[7];
   Mux_2x1_NBits #(
     .Bits(7)
   )
-  Mux_2x1_NBits_i4 (
+  Mux_2x1_NBits_i5 (
     .sel( imm ),
-    .in_0( s97 ),
+    .in_0( s100 ),
     .in_1( 7'b0 ),
-    .out( s98 )
+    .out( s101 )
   );
-  assign s105 = s98[0];
-  assign s104 = s98[1];
-  assign s103 = s98[2];
-  assign s102 = s98[3];
-  assign s101 = s98[4];
-  assign s100 = s98[5];
-  assign s99 = s98[6];
-  controllogic controllogic_i5 (
-    .A( s99 ),
-    .B( s100 ),
-    .C( s101 ),
-    .D( s102 ),
-    .E( s103 ),
-    .F( s104 ),
-    .G( s105 ),
-    .muxb0( s106 ),
-    .muxb1( s107 ),
-    .muxb2( s108 ),
+  assign s108 = s101[0];
+  assign s107 = s101[1];
+  assign s106 = s101[2];
+  assign s105 = s101[3];
+  assign s104 = s101[4];
+  assign s103 = s101[5];
+  assign s102 = s101[6];
+  controllogic controllogic_i6 (
+    .A( s102 ),
+    .B( s103 ),
+    .C( s104 ),
+    .D( s105 ),
+    .E( s106 ),
+    .F( s107 ),
+    .G( s108 ),
+    .muxb0( s109 ),
+    .muxb1( s110 ),
+    .muxb2( s111 ),
     .src2D( src2D ),
-    .aluop0( s109 ),
-    .aluop1( s110 ),
-    .aluop2( s111 ),
-    .aluop3( s112 ),
-    .aluop4( s113 ),
+    .aluop0( s112 ),
+    .aluop1( s113 ),
+    .aluop2( s114 ),
+    .aluop3( s115 ),
+    .aluop4( s116 ),
     .WE( WE ),
     .sf( sf ),
     .alu2D( alu2D ),
-    .iem0( s114 ),
-    .iem1( s115 ),
-    .br0( s116 ),
-    .br1( s117 ),
-    .br2( s118 ),
+    .iem0( s117 ),
+    .iem1( s118 ),
+    .br0( s119 ),
+    .br1( s120 ),
+    .br2( s121 ),
     .muxA( muxA ),
     .ld( ld ),
     .st( st ),
@@ -1264,35 +1359,35 @@ module tt_um_smallcpu (
     .randomSel( RandomNUMSel ),
     .timerSel( timer_Sel )
   );
-  assign WDmux[0] = (stPC | ld | RandomNUMSel);
-  assign WDmux[1] = (ioR | stPC);
-  assign WDmux[2] = (timer_Sel | RandomNUMSel);
-  assign muxB[0] = s108;
-  assign muxB[1] = s107;
-  assign muxB[2] = s106;
-  assign aluOp[0] = s113;
-  assign aluOp[1] = s112;
-  assign aluOp[2] = s111;
-  assign aluOp[3] = s110;
-  assign aluOp[4] = s109;
-  assign br[0] = s118;
-  assign br[1] = s117;
-  assign br[2] = s116;
-  assign iem[0] = s115;
-  assign iem[1] = s114;
-  ImReg ImReg_i6 (
+  assign s15[0] = (stPC | ld | RandomNUMSel);
+  assign s15[1] = (ioR | stPC);
+  assign s15[2] = (timer_Sel | RandomNUMSel);
+  assign muxB[0] = s111;
+  assign muxB[1] = s110;
+  assign muxB[2] = s109;
+  assign aluOp[0] = s116;
+  assign aluOp[1] = s115;
+  assign aluOp[2] = s114;
+  assign aluOp[3] = s113;
+  assign aluOp[4] = s112;
+  assign br[0] = s121;
+  assign br[1] = s120;
+  assign br[2] = s119;
+  assign iem[0] = s118;
+  assign iem[1] = s117;
+  ImReg ImReg_i7 (
     .en( imm ),
     .iem( iem ),
-    .C( s12 ),
+    .C( C ),
     .inst( s8 ),
     .imm( s3 )
   );
-  assign s18 = br[1:0];
+  assign s20 = br[1:0];
   assign sel = aluOp[3:0];
   Mux_2x1_NBits #(
     .Bits(16)
   )
-  Mux_2x1_NBits_i7 (
+  Mux_2x1_NBits_i8 (
     .sel( muxA ),
     .in_0( s0 ),
     .in_1( s1 ),
@@ -1301,7 +1396,7 @@ module tt_um_smallcpu (
   Mux_8x1_NBits #(
     .Bits(16)
   )
-  Mux_8x1_NBits_i8 (
+  Mux_8x1_NBits_i9 (
     .sel( muxB ),
     .in_0( s1 ),
     .in_1( 16'b0 ),
@@ -1318,63 +1413,63 @@ module tt_um_smallcpu (
     .Bits(16),
     .AddrBits(5)
   )
-  DIG_RAMDualPort_i9 (
+  DIG_RAMDualPort_i10 (
     .A( s11 ),
     .Din( s1 ),
-    .str( st ),
-    .C( s12 ),
-    .ld( ld ),
-    .D( s13 )
+    .str( s12 ),
+    .C( C ),
+    .ld( s13 ),
+    .D( s14 )
   );
   Mux_8x1_NBits #(
     .Bits(16)
   )
-  Mux_8x1_NBits_i10 (
-    .sel( WDmux ),
-    .in_0( s14 ),
-    .in_1( s15 ),
+  Mux_8x1_NBits_i11 (
+    .sel( s15 ),
+    .in_0( s16 ),
+    .in_1( s17 ),
     .in_2( Din ),
-    .in_3( s16 ),
+    .in_3( s18 ),
     .in_4( timer_in ),
     .in_5( RandomNUM ),
     .in_6( 16'b0 ),
     .in_7( 16'b0 ),
-    .out( s17 )
+    .out( s19 )
   );
-  Mux_4x1 Mux_4x1_i11 (
-    .sel( s18 ),
+  Mux_4x1 Mux_4x1_i12 (
+    .sel( s20 ),
     .in_0( 1'b0 ),
-    .in_1( s19 ),
-    .in_2( s20 ),
-    .in_3( s21 ),
-    .out( s22 )
+    .in_1( s21 ),
+    .in_2( s22 ),
+    .in_3( s23 ),
+    .out( s24 )
   );
-  assign s23 = (s22 ^ br[2]);
+  assign s25 = (s24 ^ br[2]);
   // Carry
-  DIG_Register DIG_Register_i12 (
-    .D( s24 ),
-    .C( s12 ),
-    .en( sf ),
-    .Q( s19 )
-  );
-  // Zero
   DIG_Register DIG_Register_i13 (
-    .D( s25 ),
-    .C( s12 ),
-    .en( sf ),
-    .Q( s20 )
-  );
-  // Neg
-  DIG_Register DIG_Register_i14 (
     .D( s26 ),
-    .C( s12 ),
+    .C( C ),
     .en( sf ),
     .Q( s21 )
   );
-  RegisterBlock RegisterBlock_i15 (
-    .DataIn( s17 ),
+  // Zero
+  DIG_Register DIG_Register_i14 (
+    .D( s27 ),
+    .C( C ),
+    .en( sf ),
+    .Q( s22 )
+  );
+  // Neg
+  DIG_Register DIG_Register_i15 (
+    .D( s28 ),
+    .C( C ),
+    .en( sf ),
+    .Q( s23 )
+  );
+  RegisterBlock RegisterBlock_i16 (
+    .DataIn( s19 ),
     .WE( WE ),
-    .clk( s12 ),
+    .clk( C ),
     .src( s9 ),
     .Dest( s10 ),
     .RDest( s0 ),
@@ -1384,416 +1479,466 @@ module tt_um_smallcpu (
   DIG_Register_BUS #(
     .Bits(12)
   )
-  DIG_Register_BUS_i16 (
-    .D( s27 ),
-    .C( s28 ),
+  DIG_Register_BUS_i17 (
+    .D( s29 ),
+    .C( s30 ),
     .en( 1'b1 ),
     .Q( pcOut )
   );
   Mux_2x1_NBits #(
     .Bits(12)
   )
-  Mux_2x1_NBits_i17 (
+  Mux_2x1_NBits_i18 (
     .sel( abs ),
-    .in_0( s31 ),
-    .in_1( s32 ),
-    .out( s27 )
+    .in_0( s33 ),
+    .in_1( s34 ),
+    .out( s35 )
   );
-  assign s34 = (s33 & ioW);
+  assign s37 = (s36 & ioW);
   DIG_Register_BUS #(
     .Bits(4)
   )
-  DIG_Register_BUS_i18 (
-    .D( s35 ),
-    .C( s12 ),
-    .en( s34 ),
+  DIG_Register_BUS_i19 (
+    .D( s38 ),
+    .C( C ),
+    .en( s37 ),
     .Q( outputToOutside )
   );
   Mux_16x1_NBits #(
     .Bits(16)
   )
-  Mux_16x1_NBits_i19 (
+  Mux_16x1_NBits_i20 (
     .sel( sel ),
     .in_0( s7 ),
-    .in_1( s36 ),
-    .in_2( s37 ),
-    .in_3( s38 ),
-    .in_4( s39 ),
-    .in_5( s40 ),
-    .in_6( s41 ),
-    .in_7( s42 ),
-    .in_8( s43 ),
-    .in_9( s44 ),
-    .in_10( s45 ),
-    .in_11( s46 ),
-    .in_12( s47 ),
+    .in_1( s39 ),
+    .in_2( s40 ),
+    .in_3( s41 ),
+    .in_4( s42 ),
+    .in_5( s43 ),
+    .in_6( s44 ),
+    .in_7( s45 ),
+    .in_8( s46 ),
+    .in_9( s47 ),
+    .in_10( s48 ),
+    .in_11( s49 ),
+    .in_12( s50 ),
     .in_13( 16'b0 ),
     .in_14( 16'b0 ),
     .in_15( 16'b0 ),
-    .out( s14 )
+    .out( s16 )
   );
-  Mux_16x1 Mux_16x1_i20 (
+  Mux_16x1 Mux_16x1_i21 (
     .sel( sel ),
     .in_0( 1'b0 ),
-    .in_1( s48 ),
-    .in_2( s49 ),
+    .in_1( s51 ),
+    .in_2( s52 ),
     .in_3( 1'b0 ),
     .in_4( 1'b0 ),
     .in_5( 1'b0 ),
     .in_6( 1'b0 ),
     .in_7( 1'b0 ),
-    .in_8( s50 ),
-    .in_9( s51 ),
-    .in_10( s52 ),
+    .in_8( s53 ),
+    .in_9( s54 ),
+    .in_10( s55 ),
     .in_11( 1'b0 ),
     .in_12( 1'b0 ),
     .in_13( 1'b0 ),
     .in_14( 1'b0 ),
     .in_15( 1'b0 ),
-    .out( s24 )
+    .out( s26 )
   );
-  assign s53 = (aluOp[4] & s19);
+  assign s56 = (aluOp[4] & s21);
   // seed
   DIG_Register_BUS #(
     .Bits(16)
   )
-  DIG_Register_BUS_i21 (
+  DIG_Register_BUS_i22 (
     .D( s1 ),
-    .C( s12 ),
-    .en( s58 ),
-    .Q( s59 )
+    .C( C ),
+    .en( s61 ),
+    .Q( s62 )
   );
-  assign s58 = (s61 & ioW);
+  assign s61 = (s64 & ioW);
   DIG_JK_FF #(
     .Default(0)
   )
-  DIG_JK_FF_i22 (
-    .J( s62 ),
-    .C( s12 ),
-    .K( s62 ),
-    .Q( s56 )
-  );
-  DIG_D_FF_AS_1bit #(
-    .Default(0)
-  )
-  DIG_D_FF_AS_1bit_i23 (
-    .Set( s64 ),
-    .D( s65 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s66 )
+  DIG_JK_FF_i23 (
+    .J( s65 ),
+    .C( C ),
+    .K( s65 ),
+    .Q( s59 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i24 (
     .Set( s67 ),
-    .D( s66 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s68 )
+    .D( s68 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s69 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i25 (
-    .Set( s69 ),
-    .D( s68 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s70 )
+    .Set( s70 ),
+    .D( s69 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s71 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i26 (
-    .Set( s71 ),
-    .D( s70 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s72 )
+    .Set( s72 ),
+    .D( s71 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s73 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i27 (
-    .Set( s73 ),
-    .D( s72 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s74 )
+    .Set( s74 ),
+    .D( s73 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s75 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i28 (
-    .Set( s75 ),
-    .D( s74 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s76 )
+    .Set( s76 ),
+    .D( s75 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s77 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i29 (
-    .Set( s77 ),
-    .D( s76 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s78 )
+    .Set( s78 ),
+    .D( s77 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s79 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i30 (
-    .Set( s79 ),
-    .D( s78 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s80 )
+    .Set( s80 ),
+    .D( s79 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s81 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i31 (
-    .Set( s81 ),
-    .D( s80 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s82 )
+    .Set( s82 ),
+    .D( s81 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s83 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i32 (
-    .Set( s83 ),
-    .D( s82 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s84 )
+    .Set( s84 ),
+    .D( s83 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s85 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i33 (
-    .Set( s85 ),
-    .D( s84 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s86 )
+    .Set( s86 ),
+    .D( s85 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s87 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i34 (
-    .Set( s87 ),
-    .D( s86 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s88 )
+    .Set( s88 ),
+    .D( s87 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s89 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i35 (
-    .Set( s89 ),
-    .D( s88 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s90 )
+    .Set( s90 ),
+    .D( s89 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s91 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i36 (
-    .Set( s91 ),
-    .D( s90 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s92 )
+    .Set( s92 ),
+    .D( s91 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s93 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i37 (
-    .Set( s93 ),
-    .D( s92 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s94 )
+    .Set( s94 ),
+    .D( s93 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s95 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
   DIG_D_FF_AS_1bit_i38 (
-    .Set( s95 ),
-    .D( s94 ),
-    .C( s12 ),
-    .Clr( s63 ),
-    .Q( s96 )
+    .Set( s96 ),
+    .D( s95 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s97 )
   );
-  assign s55 = (s12 & s58);
-  assign s120 = (s119 & ioW);
+  DIG_D_FF_AS_1bit #(
+    .Default(0)
+  )
+  DIG_D_FF_AS_1bit_i39 (
+    .Set( s98 ),
+    .D( s97 ),
+    .C( C ),
+    .Clr( s66 ),
+    .Q( s99 )
+  );
+  assign s58 = (C & s61);
+  assign s123 = (s122 & ioW);
   DIG_Register_BUS #(
     .Bits(4)
   )
-  DIG_Register_BUS_i39 (
-    .D( s121 ),
-    .C( s12 ),
-    .en( s120 ),
+  DIG_Register_BUS_i40 (
+    .D( s124 ),
+    .C( C ),
+    .en( s123 ),
     .Q( outputToOutsideEnable )
   );
-  assign s132 = (s131 & ioW);
+  assign s135 = (s134 & ioW);
   // prescaler
   DIG_Register_BUS #(
     .Bits(3)
   )
-  DIG_Register_BUS_i40 (
-    .D( s133 ),
-    .C( s12 ),
-    .en( s132 ),
-    .Q( s134 )
+  DIG_Register_BUS_i41 (
+    .D( s136 ),
+    .C( C ),
+    .en( s135 ),
+    .Q( s137 )
   );
-  assign s136 = (s135 & ioW);
+  assign s139 = (s138 & ioW);
   // timer_is_active
-  DIG_Register DIG_Register_i41 (
-    .D( s137 ),
-    .C( s12 ),
-    .en( s136 ),
-    .Q( s138 )
+  DIG_Register DIG_Register_i42 (
+    .D( s140 ),
+    .C( C ),
+    .en( s139 )
   );
+  // Reset
   DIG_JK_FF #(
     .Default(0)
   )
-  DIG_JK_FF_i42 (
-    .J( s140 ),
-    .C( s12 ),
+  DIG_JK_FF_i43 (
+    .J( s142 ),
+    .C( C ),
     .K( 1'b1 ),
-    .Q( s141 )
+    .Q( s143 )
   );
-  assign s140 = (s1[0] & (s139 & ioW));
-  DIG_Counter_Nbit #(
-    .Bits(8)
-  )
-  DIG_Counter_Nbit_i43 (
-    .en( s138 ),
-    .C( s12 ),
-    .clr( s141 ),
-    .out( s142 )
+  assign s142 = (s1[0] & (s141 & ioW));
+  Mux_8x1 Mux_8x1_i44 (
+    .sel( s153 ),
+    .in_0( s145 ),
+    .in_1( s146 ),
+    .in_2( s147 ),
+    .in_3( s148 ),
+    .in_4( s149 ),
+    .in_5( s150 ),
+    .in_6( s151 ),
+    .in_7( s152 ),
+    .out( s154 )
   );
   // mem
   DIG_RAMDualPort #(
     .Bits(16),
     .AddrBits(2)
   )
-  DIG_RAMDualPort_i44 (
-    .A( s152 ),
+  DIG_RAMDualPort_i45 (
+    .A( s155 ),
     .Din( s1 ),
-    .str( s153 ),
-    .C( s12 ),
-    .ld( s154 ),
-    .D( s155 )
+    .str( s156 ),
+    .C( C ),
+    .ld( s157 ),
+    .D( s158 )
   );
-  assign s153 = (s156 & st);
-  assign s154 = (s156 & ld);
-  assign FlagOut[0] = s19;
-  assign FlagOut[1] = s20;
-  assign FlagOut[2] = s21;
+  assign s156 = (s159 & st);
+  assign s157 = (s159 & ld);
+  assign intr = (~ InterLock & ~ imm & s160 & ~ 1'b0);
+  // *
+  DIG_D_FF_1bit #(
+    .Default(0)
+  )
+  DIG_D_FF_1bit_i46 (
+    .D( s161 ),
+    .C( s162 ),
+    .Q( InterLock )
+  );
+  assign s161 = ((InterLock & ~ Reti) | intr);
+  // *
+  DIG_D_FF_1bit #(
+    .Default(0)
+  )
+  DIG_D_FF_1bit_i47 (
+    .D( s163 ),
+    .C( s164 ),
+    .Q( s160 )
+  );
+  assign s163 = ((s160 & ~ Reti) | ((~ InterLock & (~ s180 & s178)) & interEnable));
+  // intEn
+  DIG_Register_BUS #(
+    .Bits(16)
+  )
+  DIG_Register_BUS_i48 (
+    .D( s1 ),
+    .C( C ),
+    .en( s165 ),
+    .Q( s166 )
+  );
+  assign s165 = (s167 & ioW);
+  DIG_Register_BUS #(
+    .Bits(12)
+  )
+  DIG_Register_BUS_i49 (
+    .D( s35 ),
+    .C( s170 ),
+    .en( s168 ),
+    .Q( s171 )
+  );
+  assign s172 = (interEnable & Reti);
+  assign s175 = (s174 & ioW);
+  // target
+  DIG_Register_BUS #(
+    .Bits(16)
+  )
+  DIG_Register_BUS_i50 (
+    .D( s1 ),
+    .C( C ),
+    .en( s175 ),
+    .Q( s176 )
+  );
+  Mux_2x1_NBits #(
+    .Bits(12)
+  )
+  Mux_2x1_NBits_i51 (
+    .sel( Reset ),
+    .in_0( s173 ),
+    .in_1( 12'b0 ),
+    .out( s29 )
+  );
+  // Reload
+  DIG_Register DIG_Register_i52 (
+    .D( s181 ),
+    .C( C ),
+    .en( s182 ),
+    .Q( s183 )
+  );
+  assign s182 = (s184 & ioW);
+  assign s13 = (ld & ~ s159);
+  assign s12 = (st & ~ s159);
+  assign FlagOut[0] = s21;
+  assign FlagOut[1] = s22;
+  assign FlagOut[2] = s23;
   assign FlagOut[15:3] = 13'b0;
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i45 (
-    .a( s14 ),
+  CompSigned_i53 (
+    .a( s16 ),
     .b( 16'b101 ),
-    .\= ( s33 )
+    .\= ( s36 )
   );
-  assign s38 = (s2 & s7);
-  assign s39 = (s2 | s7);
-  assign s40 = (s2 ^ s7);
-  CompSigned #(
-    .Bits(16)
-  )
-  CompSigned_i46 (
-    .a( s14 ),
-    .b( 16'b0 ),
-    .\= ( s25 )
-  );
-  LSL LSL_i47 (
-    .Di( s2 ),
-    .Ci( s53 ),
-    .Do( s43 ),
-    .Co( s50 )
-  );
-  LSR LSR_i48 (
-    .Di( s2 ),
-    .Ci( s53 ),
-    .Do( s44 ),
-    .Co( s51 )
-  );
-  ASR ASR_i49 (
-    .Di( s2 ),
-    .C( s52 ),
-    .Do( s45 )
-  );
-  SWAP SWAP_i50 (
-    .Di( s2 ),
-    .Do( s46 )
-  );
-  SWAPN SWAPN_i51 (
-    .Di( s2 ),
-    .Do( s47 )
-  );
-  assign s41 = ~ s2;
-  DIG_Neg #(
-    .Bits(16)
-  )
-  DIG_Neg_i52 (
-    .in( s2 ),
-    .out( s42 )
-  );
-  Mux_2x1_NBits #(
-    .Bits(16)
-  )
-  Mux_2x1_NBits_i53 (
-    .sel( s58 ),
-    .in_0( 16'b0 ),
-    .in_1( s59 ),
-    .out( s60 )
-  );
+  assign s41 = (s2 & s7);
+  assign s42 = (s2 | s7);
+  assign s43 = (s2 ^ s7);
   CompSigned #(
     .Bits(16)
   )
   CompSigned_i54 (
-    .a( s14 ),
-    .b( 16'b1000 ),
-    .\= ( s61 )
+    .a( s16 ),
+    .b( 16'b0 ),
+    .\= ( s27 )
   );
-  assign s65 = (s76 ^ (s86 ^ (s90 ^ s94)));
-  assign RandomNUM[0] = s66;
-  assign RandomNUM[1] = s68;
-  assign RandomNUM[2] = s70;
-  assign RandomNUM[3] = s72;
-  assign RandomNUM[4] = s74;
-  assign RandomNUM[5] = s76;
-  assign RandomNUM[6] = s78;
-  assign RandomNUM[7] = s80;
-  assign RandomNUM[8] = s82;
-  assign RandomNUM[9] = s84;
-  assign RandomNUM[10] = s86;
-  assign RandomNUM[11] = s88;
-  assign RandomNUM[12] = s90;
-  assign RandomNUM[13] = s92;
-  assign RandomNUM[14] = s94;
-  assign RandomNUM[15] = s96;
+  assign s44 = ~ s2;
+  DIG_Neg #(
+    .Bits(16)
+  )
+  DIG_Neg_i55 (
+    .in( s2 ),
+    .out( s45 )
+  );
+  Mux_2x1_NBits #(
+    .Bits(16)
+  )
+  Mux_2x1_NBits_i56 (
+    .sel( s61 ),
+    .in_0( 16'b0 ),
+    .in_1( s62 ),
+    .out( s63 )
+  );
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i55 (
-    .a( s14 ),
+  CompSigned_i57 (
+    .a( s16 ),
+    .b( 16'b1000 ),
+    .\= ( s64 )
+  );
+  assign s68 = (s79 ^ (s89 ^ (s93 ^ s97)));
+  assign RandomNUM[0] = s69;
+  assign RandomNUM[1] = s71;
+  assign RandomNUM[2] = s73;
+  assign RandomNUM[3] = s75;
+  assign RandomNUM[4] = s77;
+  assign RandomNUM[5] = s79;
+  assign RandomNUM[6] = s81;
+  assign RandomNUM[7] = s83;
+  assign RandomNUM[8] = s85;
+  assign RandomNUM[9] = s87;
+  assign RandomNUM[10] = s89;
+  assign RandomNUM[11] = s91;
+  assign RandomNUM[12] = s93;
+  assign RandomNUM[13] = s95;
+  assign RandomNUM[14] = s97;
+  assign RandomNUM[15] = s99;
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i58 (
+    .a( s16 ),
     .b( 16'b110 ),
-    .\= ( s119 )
+    .\= ( s122 )
   );
   assign uio_out[3:0] = pcOut[11:8];
   assign uio_out[7:4] = outputToOutside;
@@ -1802,151 +1947,240 @@ module tt_um_smallcpu (
   DIG_Add #(
     .Bits(16)
   )
-  DIG_Add_i56 (
+  DIG_Add_i59 (
     .a( s2 ),
     .b( s7 ),
-    .c_i( s53 ),
-    .s( s36 ),
-    .c_o( s48 )
+    .c_i( s56 ),
+    .s( s39 ),
+    .c_o( s51 )
   );
   DIG_Sub #(
     .Bits(16)
   )
-  DIG_Sub_i57 (
+  DIG_Sub_i60 (
     .a( s2 ),
     .b( s7 ),
-    .c_i( s53 ),
-    .s( s37 ),
-    .c_o( s49 )
+    .c_i( s56 ),
+    .s( s40 ),
+    .c_o( s52 )
   );
   DIG_Add #(
     .Bits(12)
   )
-  DIG_Add_i58 (
+  DIG_Add_i61 (
     .a( pcOut ),
     .b( 12'b1 ),
     .c_i( 1'b0 ),
-    .s( s29 )
+    .s( s31 )
   );
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i59 (
-    .a( s14 ),
-    .b( 16'b1 ),
-    .\= ( s131 )
-  );
-  CompSigned #(
-    .Bits(16)
-  )
-  CompSigned_i60 (
-    .a( s14 ),
+  CompSigned_i62 (
+    .a( s16 ),
     .b( 16'b10 ),
-    .\= ( s135 )
+    .\= ( s134 )
   );
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i61 (
-    .a( s14 ),
-    .b( 16'b11 ),
-    .\= ( s139 )
+  CompSigned_i63 (
+    .a( s16 ),
+    .b( 16'b1 ),
+    .\= ( s138 )
   );
-  assign s11 = s14[4:0];
-  assign s35 = s1[3:0];
-  assign s26 = s14[15];
-  assign s32 = s14[11:0];
-  assign s121 = s1[3:0];
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i64 (
+    .a( s16 ),
+    .b( 16'b110 ),
+    .\= ( s141 )
+  );
+  CompUnsigned #(
+    .Bits(16)
+  )
+  CompUnsigned_i65 (
+    .a( s16 ),
+    .b( 16'b11 ),
+    .\= ( s167 )
+  );
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i66 (
+    .a( s16 ),
+    .b( 16'b11 ),
+    .\= ( s174 )
+  );
+  CompUnsigned #(
+    .Bits(16)
+  )
+  CompUnsigned_i67 (
+    .a( s176 ),
+    .b( 16'b0 ),
+    .\> ( s179 ),
+    .\= ( s180 )
+  );
+  CompSigned #(
+    .Bits(16)
+  )
+  CompSigned_i68 (
+    .a( s16 ),
+    .b( 16'b101 ),
+    .\= ( s184 )
+  );
+  assign s50[3:0] = s2[7:4];
+  assign s50[7:4] = s2[3:0];
+  assign s50[11:8] = s2[15:12];
+  assign s50[15:12] = s2[11:8];
+  assign s49[7:0] = s2[15:8];
+  assign s49[15:8] = s2[7:0];
+  assign s47[14:0] = s2[15:1];
+  assign s47[15] = s56;
+  assign s46[0] = s56;
+  assign s46[15:1] = s2[14:0];
+  assign s11 = s16[4:0];
+  assign s38 = s1[3:0];
+  assign s28 = s16[15];
+  assign s34 = s16[11:0];
+  assign s124 = s1[3:0];
   assign uo_out = pcOut[7:0];
-  assign s133 = s1[2:0];
-  assign s137 = s1[0];
-  assign s143 = s142[0];
-  assign s144 = s142[1];
-  assign s145 = s142[2];
-  assign s146 = s142[3];
-  assign s147 = s142[4];
-  assign s148 = s142[5];
-  assign s149 = s142[6];
-  assign s150 = s142[7];
-  assign s152 = s14[1:0];
-  assign s156 = s14[5];
-  assign s16[11:0] = s29;
-  assign s16[15:12] = 4'b0;
+  assign s136 = s1[2:0];
+  assign s140 = s1[0];
+  assign s155 = s16[1:0];
+  assign s159 = s16[5];
+  assign interEnable = s166[0];
+  assign s181 = s1[0];
+  assign s55 = s2[0];
+  assign s188 = s2[15];
+  assign s54 = s2[0];
+  assign s53 = s2[15];
+  assign s18[11:0] = s31;
+  assign s18[15:12] = 4'b0;
   DIG_Add #(
     .Bits(12)
   )
-  DIG_Add_i62 (
-    .a( s29 ),
-    .b( s32 ),
+  DIG_Add_i69 (
+    .a( s31 ),
+    .b( s34 ),
     .c_i( 1'b0 ),
-    .s( s30 )
-  );
-  Mux_8x1 Mux_8x1_i63 (
-    .sel( s134 ),
-    .in_0( s143 ),
-    .in_1( s144 ),
-    .in_2( s145 ),
-    .in_3( s146 ),
-    .in_4( s147 ),
-    .in_5( s148 ),
-    .in_6( s149 ),
-    .in_7( s150 ),
-    .out( s151 )
+    .s( s32 )
   );
   Mux_2x1_NBits #(
     .Bits(16)
   )
-  Mux_2x1_NBits_i64 (
-    .sel( s156 ),
-    .in_0( s13 ),
-    .in_1( s155 ),
-    .out( s15 )
+  Mux_2x1_NBits_i70 (
+    .sel( s159 ),
+    .in_0( s14 ),
+    .in_1( s158 ),
+    .out( s17 )
   );
-  assign s64 = s60[0];
-  assign s67 = s60[1];
-  assign s69 = s60[2];
-  assign s71 = s60[3];
-  assign s73 = s60[4];
-  assign s75 = s60[5];
-  assign s77 = s60[6];
-  assign s79 = s60[7];
-  assign s81 = s60[8];
-  assign s83 = s60[9];
-  assign s85 = s60[10];
-  assign s87 = s60[11];
-  assign s89 = s60[12];
-  assign s91 = s60[13];
-  assign s93 = s60[14];
-  assign s95 = s60[15];
+  assign s168 = (intr & interEnable);
+  Mux_2x1_NBits #(
+    .Bits(16)
+  )
+  Mux_2x1_NBits_i71 (
+    .sel( s179 ),
+    .in_0( 16'b0 ),
+    .in_1( s176 ),
+    .out( s177 )
+  );
+  assign s48[13:0] = s2[14:1];
+  assign s48[14] = s188;
+  assign s48[15] = s188;
+  assign s67 = s63[0];
+  assign s70 = s63[1];
+  assign s72 = s63[2];
+  assign s74 = s63[3];
+  assign s76 = s63[4];
+  assign s78 = s63[5];
+  assign s80 = s63[6];
+  assign s82 = s63[7];
+  assign s84 = s63[8];
+  assign s86 = s63[9];
+  assign s88 = s63[10];
+  assign s90 = s63[11];
+  assign s92 = s63[12];
+  assign s94 = s63[13];
+  assign s96 = s63[14];
+  assign s98 = s63[15];
   Mux_2x1_NBits #(
     .Bits(12)
   )
-  Mux_2x1_NBits_i65 (
-    .sel( s23 ),
-    .in_0( s29 ),
-    .in_1( s30 ),
-    .out( s31 )
+  Mux_2x1_NBits_i72 (
+    .sel( s25 ),
+    .in_0( s31 ),
+    .in_1( s32 ),
+    .out( s33 )
   );
-  DIG_Counter_Nbit #(
-    .Bits(16)
+  Mux_2x1_NBits #(
+    .Bits(12)
   )
-  DIG_Counter_Nbit_i66 (
-    .en( s138 ),
-    .C( s151 ),
-    .clr( s141 ),
-    .out( timer_in )
+  Mux_2x1_NBits_i73 (
+    .sel( s168 ),
+    .in_0( s35 ),
+    .in_1( 12'b10 ),
+    .out( s169 )
+  );
+  Mux_2x1_NBits #(
+    .Bits(12)
+  )
+  Mux_2x1_NBits_i74 (
+    .sel( s172 ),
+    .in_0( s169 ),
+    .in_1( s171 ),
+    .out( s173 )
   );
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i67 (
+  DIG_D_FF_AS_1bit_i75 (
     .Set( 1'b0 ),
-    .D( s54 ),
-    .C( s55 ),
-    .Clr( s56 ),
-    .Q( s57 ),
-    .\~Q ( s54 )
+    .D( s57 ),
+    .C( s58 ),
+    .Clr( s59 ),
+    .Q( s60 ),
+    .\~Q ( s57 )
   );
-  assign s62 = (s57 | s56);
-  assign s63 = (s58 & ~ s62);
+  assign s65 = (s60 | s59);
+  assign s66 = (s61 & ~ s65);
+  CompUnsigned #(
+    .Bits(16)
+  )
+  CompUnsigned_i76 (
+    .a( s177 ),
+    .b( timer_in ),
+    .\= ( s178 )
+  );
+  assign s185 = (~ s180 & ((s178 & s183) | s143));
+  Mux_2x1_NBits #(
+    .Bits(3)
+  )
+  Mux_2x1_NBits_i77 (
+    .sel( s185 ),
+    .in_0( s137 ),
+    .in_1( 3'b0 ),
+    .out( s153 )
+  );
+  Mux_2x1 Mux_2x1_i78 (
+    .sel( s187 ),
+    .in_0( s154 ),
+    .in_1( 1'b1 ),
+    .out( s186 )
+  );
+  assign s187 = (InterLock | ((s178 & ~ s180) & ~ s185));
+  DIG_CounterPreset #(
+    .Bits(16),
+    .maxValue(0)
+  )
+  DIG_CounterPreset_i79 (
+    .en( 1'b0 ),
+    .C( s186 ),
+    .dir( 1'b0 ),
+    .in( 16'b0 ),
+    .ld( s185 ),
+    .clr( 1'b0 ),
+    .out( timer_in )
+  );
 endmodule
