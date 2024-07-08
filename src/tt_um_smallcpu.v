@@ -1964,7 +1964,7 @@ module Mux_16x1
 endmodule
 
 
-module tt_um_smallcpu_spi (
+module tt_um_smallcpu (
   input [7:0] \Input ,
   input clk,
   input rst_n,
