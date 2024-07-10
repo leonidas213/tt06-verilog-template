@@ -3,33 +3,6 @@
  * Any changes will be lost if this file is regenerated.
  */
 
-module Driver
-(
-    input in,
-    input sel,
-    output out
-);
-    assign out = (sel == 1'b1)? in : 1'bz;
-endmodule
-
-module Mux_2x1
-(
-    input [0:0] sel,
-    input in_0,
-    input in_1,
-    output reg out
-);
-    always @ (*) begin
-        case (sel)
-            1'h0: out = in_0;
-            1'h1: out = in_1;
-            default:
-                out = 'h0;
-        endcase
-    end
-endmodule
-
-
 module Mux_8x1_NBits #(
     parameter Bits = 2
 )
@@ -61,94 +34,6 @@ module Mux_8x1_NBits #(
     end
 endmodule
 
-
-module DIG_Register_BUS #(
-    parameter Bits = 1
-)
-(
-    input C,
-    input en,
-    input [(Bits - 1):0]D,
-    output [(Bits - 1):0]Q
-);
-
-    reg [(Bits - 1):0] state = 'h0;
-
-    assign Q = state;
-
-    always @ (posedge C) begin
-        if (en)
-            state <= D;
-   end
-endmodule
-
-module Mux_4x1
-(
-    input [1:0] sel,
-    input in_0,
-    input in_1,
-    input in_2,
-    input in_3,
-    output reg out
-);
-    always @ (*) begin
-        case (sel)
-            2'h0: out = in_0;
-            2'h1: out = in_1;
-            2'h2: out = in_2;
-            2'h3: out = in_3;
-            default:
-                out = 'h0;
-        endcase
-    end
-endmodule
-
-
-// Register for storing large constants.
-// There is a 1-bit command describing this register. 
-// In this way, 15 bits can be stored (the 16th bit 
-// activates the writing of this register and therefore 
-// is always one). The 16th bit will be set according 
-// to the 'immediate extend mode' (iem).
-module ImReg (
-  input en, // enables storage
-  input [1:0] iem, // immediate extend mode (0: sign extend; 1: extend with 0, 2:extend with S0, 3:extend with D0)
-  input C,
-  input [15:0] inst, // the current instruction
-  output [15:0] imm // The constant of register contents and bit 8.
-
-);
-  wire [14:0] s0;
-  wire [14:0] s1;
-  wire s2;
-  wire s3;
-  wire s4;
-  wire s5;
-  assign s2 = inst[0];
-  assign s3 = inst[4];
-  assign s0 = inst[14:0];
-  // imm
-  DIG_Register_BUS #(
-    .Bits(15)
-  )
-  DIG_Register_BUS_i0 (
-    .D( s0 ),
-    .C( C ),
-    .en( en ),
-    .Q( s1 )
-  );
-  assign s5 = s1[14];
-  Mux_4x1 Mux_4x1_i1 (
-    .sel( iem ),
-    .in_0( s5 ),
-    .in_1( 1'b0 ),
-    .in_2( s2 ),
-    .in_3( s3 ),
-    .out( s4 )
-  );
-  assign imm[14:0] = s1;
-  assign imm[15] = s4;
-endmodule
 module DIG_D_FF_1bit
 #(
     parameter Default = 0
@@ -235,6 +120,26 @@ module DIG_JK_FF
     end
 endmodule
 
+
+module DIG_Register_BUS #(
+    parameter Bits = 1
+)
+(
+    input C,
+    input en,
+    input [(Bits - 1):0]D,
+    output [(Bits - 1):0]Q
+);
+
+    reg [(Bits - 1):0] state = 'h0;
+
+    assign Q = state;
+
+    always @ (posedge C) begin
+        if (en)
+            state <= D;
+   end
+endmodule
 
 module DIG_Counter_Nbit
 #(
@@ -376,6 +281,24 @@ module DriverBus#(
 );
     assign out = (sel == 1'b1)? in : {Bits{1'bz}};
 endmodule
+
+module Mux_2x1
+(
+    input [0:0] sel,
+    input in_0,
+    input in_1,
+    output reg out
+);
+    always @ (*) begin
+        case (sel)
+            1'h0: out = in_0;
+            1'h1: out = in_1;
+            default:
+                out = 'h0;
+        endcase
+    end
+endmodule
+
 
 module timer (
   input [15:0] dOut,
@@ -1223,6 +1146,482 @@ module RegisterBlock (
     .out( Rsrc )
   );
 endmodule
+///////////////////////////////////////////////////////////////////////////////
+// Description: SPI (Serial Peripheral Interface) Master
+//              Creates master based on input configuration.
+//              Sends a byte one bit at a time on MOSI
+//              Will also receive byte data one bit at a time on MISO.
+//              Any data on input byte will be shipped out on MOSI.
+//
+//              To kick-off transaction, user must pulse i_TX_DV.
+//              This module supports multi-byte transmissions by pulsing
+//              i_TX_DV and loading up i_TX_Byte when o_TX_Ready is high.
+//
+//              This module is only responsible for controlling Clk, MOSI, 
+//              and MISO.  If the SPI peripheral requires a chip-select, 
+//              this must be done at a higher level.
+//
+// Note:        i_Clk must be at least 2x faster than i_SPI_Clk
+//
+// Parameters:  SPI_MODE, can be 0, 1, 2, or 3.  See above.
+//              Can be configured in one of 4 modes:
+//              Mode | Clock Polarity (CPOL/CKP) | Clock Phase (CPHA)
+//               0   |             0             |        0
+//               1   |             0             |        1
+//               2   |             1             |        0
+//               3   |             1             |        1
+//              More: https://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Mode_numbers
+//              CLKS_PER_HALF_BIT - Sets frequency of o_SPI_Clk.  o_SPI_Clk is
+//              derived from i_Clk.  Set to integer number of clocks for each
+//              half-bit of SPI data.  E.g. 100 MHz i_Clk, CLKS_PER_HALF_BIT = 2
+//              would create o_SPI_CLK of 25 MHz.  Must be >= 2
+//
+///////////////////////////////////////////////////////////////////////////////
+
+module SPI_Master
+  #(parameter SPI_MODE = 0,
+    parameter CLKS_PER_HALF_BIT = 2)
+  (
+   // Control/Data Signals,
+   input        i_Rst_L,     // FPGA Reset
+   input        i_Clk,       // FPGA Clock
+   
+   // TX (MOSI) Signals
+   input [7:0]  i_TX_Byte,        // Byte to transmit on MOSI
+   input        i_TX_DV,          // Data Valid Pulse with i_TX_Byte
+   output reg   o_TX_Ready,       // Transmit Ready for next byte
+   
+   // RX (MISO) Signals
+   output reg       o_RX_DV,     // Data Valid pulse (1 clock cycle)
+   output reg [7:0] o_RX_Byte,   // Byte received on MISO
+
+   // SPI Interface
+   output reg o_SPI_Clk,
+   input      i_SPI_MISO,
+   output reg o_SPI_MOSI
+   );
+
+  // SPI Interface (All Runs at SPI Clock Domain)
+  wire w_CPOL;     // Clock polarity
+  wire w_CPHA;     // Clock phase
+
+  reg [$clog2(CLKS_PER_HALF_BIT*2)-1:0] r_SPI_Clk_Count;
+  reg r_SPI_Clk;
+  reg [4:0] r_SPI_Clk_Edges;
+  reg r_Leading_Edge;
+  reg r_Trailing_Edge;
+  reg       r_TX_DV;
+  reg [7:0] r_TX_Byte;
+
+  reg [2:0] r_RX_Bit_Count;
+  reg [2:0] r_TX_Bit_Count;
+
+  // CPOL: Clock Polarity
+  // CPOL=0 means clock idles at 0, leading edge is rising edge.
+  // CPOL=1 means clock idles at 1, leading edge is falling edge.
+  assign w_CPOL  = (SPI_MODE == 2) | (SPI_MODE == 3);
+
+  // CPHA: Clock Phase
+  // CPHA=0 means the "out" side changes the data on trailing edge of clock
+  //              the "in" side captures data on leading edge of clock
+  // CPHA=1 means the "out" side changes the data on leading edge of clock
+  //              the "in" side captures data on the trailing edge of clock
+  assign w_CPHA  = (SPI_MODE == 1) | (SPI_MODE == 3);
+
+
+
+  // Purpose: Generate SPI Clock correct number of times when DV pulse comes
+  always @(posedge i_Clk or negedge i_Rst_L)
+  begin
+    if (~i_Rst_L)
+    begin
+      o_TX_Ready      <= 1'b0;
+      r_SPI_Clk_Edges <= 0;
+      r_Leading_Edge  <= 1'b0;
+      r_Trailing_Edge <= 1'b0;
+      r_SPI_Clk       <= w_CPOL; // assign default state to idle state
+      r_SPI_Clk_Count <= 0;
+    end
+    else
+    begin
+
+      // Default assignments
+      r_Leading_Edge  <= 1'b0;
+      r_Trailing_Edge <= 1'b0;
+      
+      if (i_TX_DV)
+      begin
+        o_TX_Ready      <= 1'b0;
+        r_SPI_Clk_Edges <= 16;  // Total # edges in one byte ALWAYS 16
+      end
+      else if (r_SPI_Clk_Edges > 0)
+      begin
+        o_TX_Ready <= 1'b0;
+        
+        if (r_SPI_Clk_Count == CLKS_PER_HALF_BIT*2-1)
+        begin
+          r_SPI_Clk_Edges <= r_SPI_Clk_Edges - 1'b1;
+          r_Trailing_Edge <= 1'b1;
+          r_SPI_Clk_Count <= 0;
+          r_SPI_Clk       <= ~r_SPI_Clk;
+        end
+        else if (r_SPI_Clk_Count == CLKS_PER_HALF_BIT-1)
+        begin
+          r_SPI_Clk_Edges <= r_SPI_Clk_Edges - 1'b1;
+          r_Leading_Edge  <= 1'b1;
+          r_SPI_Clk_Count <= r_SPI_Clk_Count + 1'b1;
+          r_SPI_Clk       <= ~r_SPI_Clk;
+        end
+        else
+        begin
+          r_SPI_Clk_Count <= r_SPI_Clk_Count + 1'b1;
+        end
+      end  
+      else
+      begin
+        o_TX_Ready <= 1'b1;
+      end
+      
+      
+    end // else: !if(~i_Rst_L)
+  end // always @ (posedge i_Clk or negedge i_Rst_L)
+
+
+  // Purpose: Register i_TX_Byte when Data Valid is pulsed.
+  // Keeps local storage of byte in case higher level module changes the data
+  always @(posedge i_Clk or negedge i_Rst_L)
+  begin
+    if (~i_Rst_L)
+    begin
+      r_TX_Byte <= 8'h00;
+      r_TX_DV   <= 1'b0;
+    end
+    else
+      begin
+        r_TX_DV <= i_TX_DV; // 1 clock cycle delay
+        if (i_TX_DV)
+        begin
+          r_TX_Byte <= i_TX_Byte;
+        end
+      end // else: !if(~i_Rst_L)
+  end // always @ (posedge i_Clk or negedge i_Rst_L)
+
+
+  // Purpose: Generate MOSI data
+  // Works with both CPHA=0 and CPHA=1
+  always @(posedge i_Clk or negedge i_Rst_L)
+  begin
+    if (~i_Rst_L)
+    begin
+      o_SPI_MOSI     <= 1'b0;
+      r_TX_Bit_Count <= 3'b111; // send MSb first
+    end
+    else
+    begin
+      // If ready is high, reset bit counts to default
+      if (o_TX_Ready)
+      begin
+        r_TX_Bit_Count <= 3'b111;
+      end
+      // Catch the case where we start transaction and CPHA = 0
+      else if (r_TX_DV & ~w_CPHA)
+      begin
+        o_SPI_MOSI     <= r_TX_Byte[3'b111];
+        r_TX_Bit_Count <= 3'b110;
+      end
+      else if ((r_Leading_Edge & w_CPHA) | (r_Trailing_Edge & ~w_CPHA))
+      begin
+        r_TX_Bit_Count <= r_TX_Bit_Count - 1'b1;
+        o_SPI_MOSI     <= r_TX_Byte[r_TX_Bit_Count];
+      end
+    end
+  end
+
+
+  // Purpose: Read in MISO data.
+  always @(posedge i_Clk or negedge i_Rst_L)
+  begin
+    if (~i_Rst_L)
+    begin
+      o_RX_Byte      <= 8'h00;
+      o_RX_DV        <= 1'b0;
+      r_RX_Bit_Count <= 3'b111;
+    end
+    else
+    begin
+
+      // Default Assignments
+      o_RX_DV   <= 1'b0;
+
+      if (o_TX_Ready) // Check if ready is high, if so reset bit count to default
+      begin
+        r_RX_Bit_Count <= 3'b111;
+      end
+      else if ((r_Leading_Edge & ~w_CPHA) | (r_Trailing_Edge & w_CPHA))
+      begin
+        o_RX_Byte[r_RX_Bit_Count] <= i_SPI_MISO;  // Sample data
+        r_RX_Bit_Count            <= r_RX_Bit_Count - 1'b1;
+        if (r_RX_Bit_Count == 3'b000)
+        begin
+          o_RX_DV   <= 1'b1;   // Byte done, pulse Data Valid
+        end
+      end
+    end
+  end
+  
+  
+  // Purpose: Add clock delay to signals for alignment.
+  always @(posedge i_Clk or negedge i_Rst_L)
+  begin
+    if (~i_Rst_L)
+    begin
+      o_SPI_Clk  <= w_CPOL;
+    end
+    else
+      begin
+        o_SPI_Clk <= r_SPI_Clk;
+      end // else: !if(~i_Rst_L)
+  end // always @ (posedge i_Clk or negedge i_Rst_L)
+  
+
+endmodule // SPI_Master
+
+
+module DIG_D_FF_AS_1bit
+#(
+    parameter Default = 0
+)
+(
+   input Set,
+   input D,
+   input C,
+   input Clr,
+   output Q,
+   output \~Q
+);
+    reg state;
+
+    assign Q = state;
+    assign \~Q  = ~state;
+
+    always @ (posedge C or posedge Clr or posedge Set)
+    begin
+        if (Set)
+            state <= 1'b1;
+        else if (Clr)
+            state <= 'h0;
+        else
+            state <= D;
+    end
+
+    initial begin
+        state = Default;
+    end
+endmodule
+
+module spiYedek (
+  input spi_miso,
+  input [15:0] Address,
+  input clk,
+  input st,
+  input [15:0] DataIn,
+  input ld,
+  input spi_rst,
+  output spi_clk,
+  output spi_mosi,
+  output Busy,
+  output [15:0] data_out
+);
+  wire s0;
+  wire [7:0] s1;
+  wire Tx_Ready;
+  wire Rx_Ready;
+  wire [7:0] data_Rx;
+  wire load;
+  wire [7:0] ramCommand;
+  wire Selected;
+  wire [15:0] s2;
+  wire [7:0] ramAdres_0;
+  wire [7:0] ramAdres_1;
+  wire [2:0] s3;
+  wire [7:0] ramData_1;
+  wire [7:0] ramData_0;
+  wire [7:0] s4;
+  wire [15:0] s5;
+  wire store;
+  wire s6;
+  wire s7;
+  wire s8;
+  wire busy_N;
+  wire s9;
+  wire s10;
+  wire rstSpi;
+  wire s11;
+  wire s12;
+  wire s13;
+  wire s14;
+  wire [7:0] s15;
+  wire s16;
+  wire [7:0] s17;
+  wire s18;
+  wire s19;
+  wire s20;
+  wire s21;
+  assign s18 = (st & clk);
+  assign s20 = (ld & clk);
+  // SPI_Master
+  SPI_Master SPI_Master_i0 (
+    .i_Rst_L( s0 ),
+    .i_Clk( clk ),
+    .i_TX_Byte( s1 ),
+    .i_TX_DV( Tx_Ready ),
+    .i_SPI_MISO( spi_miso ),
+    .o_TX_Ready( Tx_Ready ),
+    .o_RX_DV( Rx_Ready ),
+    .o_RX_Byte( data_Rx ),
+    .o_SPI_Clk( spi_clk ),
+    .o_SPI_MOSI( spi_mosi )
+  );
+  // RamAddress
+  DIG_Register_BUS #(
+    .Bits(16)
+  )
+  DIG_Register_BUS_i1 (
+    .D( Address ),
+    .C( clk ),
+    .en( Selected ),
+    .Q( s2 )
+  );
+  // RamData
+  DIG_Register_BUS #(
+    .Bits(16)
+  )
+  DIG_Register_BUS_i2 (
+    .D( DataIn ),
+    .C( clk ),
+    .en( Selected ),
+    .Q( s5 )
+  );
+  DIG_D_FF_AS_1bit #(
+    .Default(0)
+  )
+  DIG_D_FF_AS_1bit_i3 (
+    .Set( s18 ),
+    .D( store ),
+    .C( 1'b1 ),
+    .Clr( s19 ),
+    .Q( store )
+  );
+  DIG_D_FF_AS_1bit #(
+    .Default(0)
+  )
+  DIG_D_FF_AS_1bit_i4 (
+    .Set( s20 ),
+    .D( load ),
+    .C( 1'b1 ),
+    .Clr( s21 ),
+    .Q( load )
+  );
+  assign s21 = (rstSpi & ~ ld);
+  assign s19 = (rstSpi & ~ st);
+  assign rstSpi = (spi_rst | s10);
+  assign ramCommand[0] = load;
+  assign ramCommand[1] = 1'b1;
+  assign ramCommand[2] = 1'b0;
+  assign ramCommand[3] = 1'b0;
+  assign ramCommand[4] = 1'b0;
+  assign ramCommand[5] = 1'b0;
+  assign ramCommand[6] = 1'b0;
+  assign ramCommand[7] = 1'b0;
+  assign Selected = (load | store);
+  assign s3[0] = Tx_Ready;
+  assign s3[1] = Tx_Ready;
+  assign s3[2] = Tx_Ready;
+  assign ramAdres_0 = s2[7:0];
+  assign ramAdres_1 = s2[15:8];
+  assign ramData_0 = s5[7:0];
+  assign ramData_1 = s5[15:8];
+  Mux_8x1_NBits #(
+    .Bits(8)
+  )
+  Mux_8x1_NBits_i5 (
+    .sel( s3 ),
+    .in_0( ramCommand ),
+    .in_1( ramAdres_1 ),
+    .in_2( ramAdres_0 ),
+    .in_3( ramData_1 ),
+    .in_4( ramData_0 ),
+    .in_5( 8'b1000001 ),
+    .in_6( 8'b1001110 ),
+    .in_7( 8'b1100000 ),
+    .out( s4 )
+  );
+  Mux_2x1 Mux_2x1_i6 (
+    .sel( rstSpi ),
+    .in_0( Selected ),
+    .in_1( 1'b0 ),
+    .out( s0 )
+  );
+  assign s9 = (Selected ^ rstSpi);
+  assign Busy = (~ rstSpi & Selected);
+  assign s6 = s3[0];
+  assign s7 = s3[1];
+  assign s8 = s3[2];
+  assign s12 = (s8 & ~ s7 & ~ s6);
+  assign s13 = (s6 & s6 & ~ s8);
+  assign busy_N = (Rx_Ready & ((~ s6 & ~ s7 & s8) | (s12 & load)));
+  assign s11 = ((s12 | s13) & load);
+  assign s14 = (s12 & load);
+  assign s16 = (s13 & load);
+  // Reset
+  DIG_JK_FF #(
+    .Default(0)
+  )
+  DIG_JK_FF_i7 (
+    .J( busy_N ),
+    .C( clk ),
+    .K( s9 ),
+    .Q( s10 )
+  );
+  Mux_2x1_NBits #(
+    .Bits(8)
+  )
+  Mux_2x1_NBits_i8 (
+    .sel( s11 ),
+    .in_0( s4 ),
+    .in_1( 8'b0 ),
+    .out( s1 )
+  );
+  DIG_Register_BUS #(
+    .Bits(8)
+  )
+  DIG_Register_BUS_i9 (
+    .D( data_Rx ),
+    .C( Rx_Ready ),
+    .en( s14 ),
+    .Q( s15 )
+  );
+  DIG_Register_BUS #(
+    .Bits(8)
+  )
+  DIG_Register_BUS_i10 (
+    .D( data_Rx ),
+    .C( Rx_Ready ),
+    .en( s16 ),
+    .Q( s17 )
+  );
+  assign data_out[7:0] = s15;
+  assign data_out[15:8] = s17;
+endmodule
+
+module Driver
+(
+    input in,
+    input sel,
+    output out
+);
+    assign out = (sel == 1'b1)? in : 1'bz;
+endmodule
 module DIG_ROM_65536X16_pgr (
     input [15:0] A,
     input sel,
@@ -1389,6 +1788,74 @@ module controllogic (
   assign storeFlagI = (A & s0 & s1 & D & s5 & F & s4);
 endmodule
 
+module Mux_4x1
+(
+    input [1:0] sel,
+    input in_0,
+    input in_1,
+    input in_2,
+    input in_3,
+    output reg out
+);
+    always @ (*) begin
+        case (sel)
+            2'h0: out = in_0;
+            2'h1: out = in_1;
+            2'h2: out = in_2;
+            2'h3: out = in_3;
+            default:
+                out = 'h0;
+        endcase
+    end
+endmodule
+
+
+// Register for storing large constants.
+// There is a 1-bit command describing this register. 
+// In this way, 15 bits can be stored (the 16th bit 
+// activates the writing of this register and therefore 
+// is always one). The 16th bit will be set according 
+// to the 'immediate extend mode' (iem).
+module ImReg (
+  input en, // enables storage
+  input [1:0] iem, // immediate extend mode (0: sign extend; 1: extend with 0, 2:extend with S0, 3:extend with D0)
+  input C,
+  input [15:0] inst, // the current instruction
+  output [15:0] imm // The constant of register contents and bit 8.
+
+);
+  wire [14:0] s0;
+  wire [14:0] s1;
+  wire s2;
+  wire s3;
+  wire s4;
+  wire s5;
+  assign s2 = inst[0];
+  assign s3 = inst[4];
+  assign s0 = inst[14:0];
+  // imm
+  DIG_Register_BUS #(
+    .Bits(15)
+  )
+  DIG_Register_BUS_i0 (
+    .D( s0 ),
+    .C( C ),
+    .en( en ),
+    .Q( s1 )
+  );
+  assign s5 = s1[14];
+  Mux_4x1 Mux_4x1_i1 (
+    .sel( iem ),
+    .in_0( s5 ),
+    .in_1( 1'b0 ),
+    .in_2( s2 ),
+    .in_3( s3 ),
+    .out( s4 )
+  );
+  assign imm[14:0] = s1;
+  assign imm[15] = s4;
+endmodule
+
 module DIG_Neg #(
     parameter Bits = 1
 )
@@ -1497,38 +1964,6 @@ module Mux_16x1
 endmodule
 
 
-module DIG_D_FF_AS_1bit
-#(
-    parameter Default = 0
-)
-(
-   input Set,
-   input D,
-   input C,
-   input Clr,
-   output Q,
-   output \~Q
-);
-    reg state;
-
-    assign Q = state;
-    assign \~Q  = ~state;
-
-    always @ (posedge C or posedge Clr or posedge Set)
-    begin
-        if (Set)
-            state <= 1'b1;
-        else if (Clr)
-            state <= 'h0;
-        else
-            state <= D;
-    end
-
-    initial begin
-        state = Default;
-    end
-endmodule
-
 module tt_um_smallcpu (
   input clk,
   input rst_n,
@@ -1555,6 +1990,7 @@ module tt_um_smallcpu (
   wire [7:0] OPcode;
   wire [2:0] s9;
   wire [15:0] AddrOut;
+  wire [15:0] din_bus;
   wire [15:0] iow_Din;
   wire [15:0] s10;
   wire [15:0] timer_in;
@@ -1697,31 +2133,35 @@ module tt_um_smallcpu (
   wire rst;
   wire [15:0] timerout0;
   wire s123;
+  wire s124;
   wire spi_busy_ram;
   wire spi_clock_ram;
+  wire s125;
   wire spi_mosi_ram;
-  wire s124;
-  wire intsin;
-  wire [15:0] s125;
-  wire [15:0] s126;
-  wire s127;
-  wire pcShift;
+  wire s126;
+  wire [15:0] s127;
   wire s128;
-  wire s129;
-  wire s130;
+  wire intsin;
+  wire [15:0] s129;
+  wire [15:0] s130;
   wire s131;
+  wire pcShift;
   wire s132;
-  wire [15:0] timerout1;
   wire s133;
   wire s134;
   wire s135;
-  wire [15:0] timerout2;
-  wire [1:0] s136;
+  wire s136;
   wire s137;
+  wire [15:0] timerout1;
   wire s138;
   wire s139;
+  wire s140;
+  wire [15:0] timerout2;
+  wire [1:0] s141;
+  wire s142;
+  wire s143;
+  wire s144;
   wire spi_miso;
-  assign spi_busy_ram = 1'b0;
   assign iow_Din[0] = uio_in[0];
   assign iow_Din[1] = uio_in[1];
   assign iow_Din[2] = uio_in[2];
@@ -1740,34 +2180,18 @@ module tt_um_smallcpu (
   assign iow_Din[15] = 1'b0;
   assign s107 = ~ clk;
   assign s109 = ~ clk;
-  Driver Driver_i0 (
-    .in( spi_busy_ram ),
-    .sel( spi_busy_ram ),
-    .out( spi_clock_ram )
-  );
-  Driver Driver_i1 (
-    .in( spi_busy_ram ),
-    .sel( spi_busy_ram ),
-    .out( spi_mosi_ram )
-  );
-  assign s124 = ~ rst_n;
-  Mux_2x1 Mux_2x1_i2 (
-    .sel( spi_busy_ram ),
-    .in_0( clk ),
-    .in_1( 1'b1 ),
-    .out( pcClock )
-  );
+  assign s128 = ~ rst_n;
   assign rst = ~ rst_n;
-  assign s131 = ~ clk;
+  assign s136 = ~ clk;
   assign spi_miso = ui_in[0];
   assign intsin = ui_in[1];
   Mux_8x1_NBits #(
     .Bits(16)
   )
-  Mux_8x1_NBits_i3 (
+  Mux_8x1_NBits_i0 (
     .sel( s9 ),
     .in_0( AddrOut ),
-    .in_1( 16'b0 ),
+    .in_1( din_bus ),
     .in_2( iow_Din ),
     .in_3( s10 ),
     .in_4( timer_in ),
@@ -1776,18 +2200,11 @@ module tt_um_smallcpu (
     .in_7( 16'b0 ),
     .out( s11 )
   );
-  ImReg ImReg_i4 (
-    .en( imm ),
-    .iem( iem ),
-    .C( pcClock ),
-    .inst( CurrentOpcode ),
-    .imm( s2 )
-  );
   // *
   DIG_D_FF_1bit #(
     .Default(0)
   )
-  DIG_D_FF_1bit_i5 (
+  DIG_D_FF_1bit_i1 (
     .D( s106 ),
     .C( s107 ),
     .Q( InterLock )
@@ -1796,13 +2213,13 @@ module tt_um_smallcpu (
   DIG_D_FF_1bit #(
     .Default(0)
   )
-  DIG_D_FF_1bit_i6 (
+  DIG_D_FF_1bit_i2 (
     .D( s108 ),
     .C( s109 ),
     .Q( s105 )
   );
   // timer0
-  timer timer_i7 (
+  timer timer_i3 (
     .dOut( DataOut ),
     .Addr( AddrOut ),
     .ioW( ioW ),
@@ -1818,41 +2235,41 @@ module tt_um_smallcpu (
     .\timer?nterrupt ( s123 )
   );
   // OpCode
-  OpCode OpCode_i8 (
+  OpCode OpCode_i4 (
     .clk( pcClock ),
-    .rst( s124 ),
+    .rst( s128 ),
     .instructionInput( intsin ),
-    .ProgramCounter( s125 ),
-    .opcoder( s126 ),
-    .PcClock( s127 ),
+    .ProgramCounter( s129 ),
+    .opcoder( s130 ),
+    .PcClock( s131 ),
     .PcShifter( pcShift )
   );
   // Neg
-  register_1bit register_1bit_i9 (
-    .D( s128 ),
+  register_1bit register_1bit_i5 (
+    .D( s132 ),
     .C( clk ),
     .en( sf ),
     .rst( rst ),
     .Q( s15 )
   );
   // Zero
-  register_1bit register_1bit_i10 (
-    .D( s129 ),
+  register_1bit register_1bit_i6 (
+    .D( s133 ),
     .C( clk ),
     .en( sf ),
     .rst( rst ),
     .Q( s14 )
   );
   // Carry
-  register_1bit register_1bit_i11 (
-    .D( s130 ),
+  register_1bit register_1bit_i7 (
+    .D( s134 ),
     .C( clk ),
     .en( sf ),
     .rst( rst ),
     .Q( s13 )
   );
   // outputReg
-  register_8bit register_8bit_i12 (
+  register_8bit register_8bit_i8 (
     .D( s122 ),
     .C( clk ),
     .en( s121 ),
@@ -1860,7 +2277,7 @@ module tt_um_smallcpu (
     .Q( uio_oe )
   );
   // OutoutEnReg
-  register_8bit register_8bit_i13 (
+  register_8bit register_8bit_i9 (
     .D( s119 ),
     .C( clk ),
     .en( s118 ),
@@ -1868,7 +2285,7 @@ module tt_um_smallcpu (
     .Q( uio_out )
   );
   // programCounter
-  programCounter programCounter_i14 (
+  programCounter programCounter_i10 (
     .AluIn( AddrOut ),
     .clk( pcClock ),
     .rst( rst ),
@@ -1877,10 +2294,10 @@ module tt_um_smallcpu (
     .reti( s114 ),
     .relJmp( s17 ),
     .Nextpc( s10 ),
-    .PC( s125 )
+    .PC( s129 )
   );
   // timer1
-  timer timer_i15 (
+  timer timer_i11 (
     .dOut( DataOut ),
     .Addr( AddrOut ),
     .ioW( ioW ),
@@ -1892,12 +2309,12 @@ module tt_um_smallcpu (
     .timerResetAddr( 16'b110 ),
     .timerReadAddr( 16'b10 ),
     .rst( rst ),
-    .outEn( s132 ),
+    .outEn( s137 ),
     .TimerOut( timerout1 ),
-    .\timer?nterrupt ( s133 )
+    .\timer?nterrupt ( s138 )
   );
   // timer2
-  timer timer_i16 (
+  timer timer_i12 (
     .dOut( DataOut ),
     .Addr( AddrOut ),
     .ioW( ioW ),
@@ -1909,11 +2326,11 @@ module tt_um_smallcpu (
     .timerResetAddr( 16'b1001 ),
     .timerReadAddr( 16'b11 ),
     .rst( rst ),
-    .outEn( s135 ),
+    .outEn( s140 ),
     .TimerOut( timerout2 ),
-    .\timer?nterrupt ( s134 )
+    .\timer?nterrupt ( s139 )
   );
-  RegisterBlock RegisterBlock_i17 (
+  RegisterBlock RegisterBlock_i13 (
     .DataIn( s11 ),
     .WE( WE ),
     .clk( pcClock ),
@@ -1923,26 +2340,47 @@ module tt_um_smallcpu (
     .RDest( s0 ),
     .Rsrc( DataOut )
   );
-  assign uo_out[0] = pcShift;
-  assign uo_out[1] = spi_clock_ram;
-  assign uo_out[2] = spi_mosi_ram;
-  assign uo_out[3] = ~ spi_busy_ram;
-  assign uo_out[4] = 1'b0;
-  assign uo_out[5] = 1'b0;
-  assign uo_out[6] = 1'b0;
-  assign uo_out[7] = 1'b0;
+  spiYedek spiYedek_i14 (
+    .spi_miso( spi_miso ),
+    .Address( s127 ),
+    .clk( clk ),
+    .st( st ),
+    .DataIn( DataOut ),
+    .ld( ld ),
+    .spi_rst( s135 ),
+    .spi_clk( s124 ),
+    .spi_mosi( s125 ),
+    .Busy( spi_busy_ram ),
+    .data_out( din_bus )
+  );
   assign FlagOut[0] = s13;
   assign FlagOut[1] = s14;
   assign FlagOut[2] = s15;
   assign FlagOut[15:3] = 13'b0;
+  Driver Driver_i15 (
+    .in( s124 ),
+    .sel( spi_busy_ram ),
+    .out( spi_clock_ram )
+  );
+  Driver Driver_i16 (
+    .in( s125 ),
+    .sel( spi_busy_ram ),
+    .out( spi_mosi_ram )
+  );
+  Mux_2x1 Mux_2x1_i17 (
+    .sel( spi_busy_ram ),
+    .in_0( clk ),
+    .in_1( 1'b1 ),
+    .out( pcClock )
+  );
   // pgr
   DIG_ROM_65536X16_pgr DIG_ROM_65536X16_pgr_i18 (
-    .A( s125 ),
+    .A( s129 ),
     .sel( 1'b1 ),
     .D( CurrentOpcode )
   );
-  assign s136[0] = s132;
-  assign s136[1] = s135;
+  assign s141[0] = s137;
+  assign s141[1] = s140;
   assign s119 = DataOut[7:0];
   assign s122 = DataOut[7:0];
   singExtend singExtend_i19 (
@@ -1955,13 +2393,21 @@ module tt_um_smallcpu (
     .Bits(16)
   )
   Mux_4x1_NBits_i20 (
-    .sel( s136 ),
+    .sel( s141 ),
     .in_0( timerout0 ),
     .in_1( timerout1 ),
     .in_2( timerout2 ),
     .in_3( timerout2 ),
     .out( timer_in )
   );
+  assign uo_out[0] = pcShift;
+  assign uo_out[1] = spi_clock_ram;
+  assign uo_out[2] = spi_mosi_ram;
+  assign uo_out[3] = ~ spi_busy_ram;
+  assign uo_out[4] = 1'b0;
+  assign uo_out[5] = 1'b0;
+  assign uo_out[6] = 1'b0;
+  assign uo_out[7] = 1'b0;
   assign s7 = CurrentOpcode[3:0];
   assign s8 = CurrentOpcode[7:4];
   assign OPcode = CurrentOpcode[15:8];
@@ -2046,20 +2492,13 @@ module tt_um_smallcpu (
   assign iem[0] = s101;
   assign iem[1] = s100;
   assign s106 = ((InterLock & ~ Reti) | intr);
-  Mux_8x1_NBits #(
-    .Bits(16)
-  )
-  Mux_8x1_NBits_i24 (
-    .sel( muxB ),
-    .in_0( DataOut ),
-    .in_1( 16'b0 ),
-    .in_2( s2 ),
-    .in_3( 16'b0 ),
-    .in_4( 16'b0 ),
-    .in_5( s3 ),
-    .in_6( s4 ),
-    .in_7( s5 ),
-    .out( s6 )
+  assign s135 = ~ (st | ld);
+  ImReg ImReg_i24 (
+    .en( imm ),
+    .iem( iem ),
+    .C( pcClock ),
+    .inst( CurrentOpcode ),
+    .imm( s2 )
   );
   assign s37 = (aluOp[4] & s13);
   assign s23 = ~ s1;
@@ -2082,10 +2521,25 @@ module tt_um_smallcpu (
   assign s115 = s1[15];
   assign s34 = s1[0];
   assign s33 = s1[15];
-  assign s137 = s1[0];
-  assign s138 = s1[1];
-  assign s139 = s1[2];
-  Mux_4x1 Mux_4x1_i26 (
+  assign s142 = s1[0];
+  assign s143 = s1[1];
+  assign s144 = s1[2];
+  Mux_8x1_NBits #(
+    .Bits(16)
+  )
+  Mux_8x1_NBits_i26 (
+    .sel( muxB ),
+    .in_0( DataOut ),
+    .in_1( 16'b0 ),
+    .in_2( s2 ),
+    .in_3( 16'b0 ),
+    .in_4( 16'b0 ),
+    .in_5( s3 ),
+    .in_6( s4 ),
+    .in_7( s5 ),
+    .out( s6 )
+  );
+  Mux_4x1 Mux_4x1_i27 (
     .sel( s12 ),
     .in_0( 1'b0 ),
     .in_1( s13 ),
@@ -2093,13 +2547,21 @@ module tt_um_smallcpu (
     .in_3( s15 ),
     .out( s16 )
   );
+  assign s27[13:0] = s1[14:1];
+  assign s27[14] = s115;
+  assign s27[15] = s115;
+  assign s26[14:0] = s1[15:1];
+  assign s26[15] = s37;
+  assign s25[0] = s37;
+  assign s25[15:1] = s1[14:0];
+  assign s17 = (s16 ^ br[2]);
   assign s20 = (s1 & s6);
   assign s21 = (s1 | s6);
   assign s22 = (s1 ^ s6);
   DIG_Add #(
     .Bits(16)
   )
-  DIG_Add_i27 (
+  DIG_Add_i28 (
     .a( s1 ),
     .b( s6 ),
     .c_i( s37 ),
@@ -2109,30 +2571,22 @@ module tt_um_smallcpu (
   DIG_Sub #(
     .Bits(16)
   )
-  DIG_Sub_i28 (
+  DIG_Sub_i29 (
     .a( s1 ),
     .b( s6 ),
     .c_i( s37 ),
     .s( s19 ),
     .c_o( s32 )
   );
-  assign s27[13:0] = s1[14:1];
-  assign s27[14] = s115;
-  assign s27[15] = s115;
-  assign s26[14:0] = s1[15:1];
-  assign s26[15] = s37;
-  assign s25[0] = s37;
-  assign s25[15:1] = s1[14:0];
   DIG_Mul_unsigned #(
     .Bits(16)
   )
-  DIG_Mul_unsigned_i29 (
+  DIG_Mul_unsigned_i30 (
     .a( s1 ),
     .b( s6 ),
     .mul( s116 )
   );
-  assign s17 = (s16 ^ br[2]);
-  Mux_16x1 Mux_16x1_i30 (
+  Mux_16x1 Mux_16x1_i31 (
     .sel( sel ),
     .in_0( 1'b0 ),
     .in_1( s31 ),
@@ -2156,7 +2610,7 @@ module tt_um_smallcpu (
   Mux_16x1_NBits #(
     .Bits(16)
   )
-  Mux_16x1_NBits_i31 (
+  Mux_16x1_NBits_i32 (
     .sel( sel ),
     .in_0( s6 ),
     .in_1( s18 ),
@@ -2176,16 +2630,16 @@ module tt_um_smallcpu (
     .in_15( 16'b0 ),
     .out( AddrOut )
   );
-  Mux_2x1 Mux_2x1_i32 (
+  Mux_2x1 Mux_2x1_i33 (
     .sel( store_the_flags ),
     .in_0( s36 ),
-    .in_1( s137 ),
-    .out( s130 )
+    .in_1( s142 ),
+    .out( s134 )
   );
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i33 (
+  CompSigned_i34 (
     .a( AddrOut ),
     .b( 16'b0 ),
     .\= ( s38 )
@@ -2193,7 +2647,7 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i34 (
+  CompSigned_i35 (
     .a( AddrOut ),
     .b( 16'b1101 ),
     .\= ( s47 )
@@ -2201,7 +2655,7 @@ module tt_um_smallcpu (
   CompUnsigned #(
     .Bits(16)
   )
-  CompUnsigned_i35 (
+  CompUnsigned_i36 (
     .a( AddrOut ),
     .b( 16'b1010 ),
     .\= ( s112 )
@@ -2209,7 +2663,7 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i36 (
+  CompSigned_i37 (
     .a( AddrOut ),
     .b( 16'b1011 ),
     .\= ( s117 )
@@ -2217,33 +2671,36 @@ module tt_um_smallcpu (
   CompSigned #(
     .Bits(16)
   )
-  CompSigned_i37 (
+  CompSigned_i38 (
     .a( AddrOut ),
     .b( 16'b1100 ),
     .\= ( s120 )
   );
+  assign s127[0] = 1'b0;
+  assign s127[15:1] = AddrOut[14:0];
   assign s39 = AddrOut[15];
+  assign s126 = AddrOut[15];
   assign s44 = (s47 & ioW);
   assign s110 = (s112 & ioW);
   assign s118 = (s117 & ioW);
   assign s121 = (s120 & ioW);
-  Mux_2x1 Mux_2x1_i38 (
-    .sel( store_the_flags ),
-    .in_0( s38 ),
-    .in_1( s138 ),
-    .out( s129 )
-  );
   Mux_2x1 Mux_2x1_i39 (
     .sel( store_the_flags ),
+    .in_0( s38 ),
+    .in_1( s143 ),
+    .out( s133 )
+  );
+  Mux_2x1 Mux_2x1_i40 (
+    .sel( store_the_flags ),
     .in_0( s39 ),
-    .in_1( s139 ),
-    .out( s128 )
+    .in_1( s144 ),
+    .out( s132 )
   );
   // seed
   DIG_Register_BUS #(
     .Bits(16)
   )
-  DIG_Register_BUS_i40 (
+  DIG_Register_BUS_i41 (
     .D( DataOut ),
     .C( clk ),
     .en( s44 ),
@@ -2254,7 +2711,7 @@ module tt_um_smallcpu (
   DIG_Register_BUS #(
     .Bits(16)
   )
-  DIG_Register_BUS_i41 (
+  DIG_Register_BUS_i42 (
     .D( DataOut ),
     .C( clk ),
     .en( s110 ),
@@ -2263,14 +2720,14 @@ module tt_um_smallcpu (
   Mux_2x1_NBits #(
     .Bits(16)
   )
-  Mux_2x1_NBits_i42 (
+  Mux_2x1_NBits_i43 (
     .sel( s44 ),
     .in_0( 16'b0 ),
     .in_1( s45 ),
     .out( s46 )
   );
   assign interEnable = s111[0];
-  assign s108 = ((s105 & ~ Reti) | ((s123 | s133 | s134) & interEnable));
+  assign s108 = ((s105 & ~ Reti) | ((s123 | s138 | s139) & interEnable));
   assign s113 = (intr & interEnable);
   assign s114 = (interEnable & Reti);
   assign s50 = s46[0];
@@ -2292,7 +2749,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i43 (
+  DIG_D_FF_AS_1bit_i44 (
     .Set( 1'b0 ),
     .D( s40 ),
     .C( s41 ),
@@ -2304,7 +2761,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i44 (
+  DIG_D_FF_AS_1bit_i45 (
     .Set( s50 ),
     .D( s51 ),
     .C( clk ),
@@ -2314,7 +2771,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i45 (
+  DIG_D_FF_AS_1bit_i46 (
     .Set( s53 ),
     .D( s52 ),
     .C( clk ),
@@ -2324,7 +2781,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i46 (
+  DIG_D_FF_AS_1bit_i47 (
     .Set( s55 ),
     .D( s54 ),
     .C( clk ),
@@ -2334,7 +2791,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i47 (
+  DIG_D_FF_AS_1bit_i48 (
     .Set( s57 ),
     .D( s56 ),
     .C( clk ),
@@ -2344,7 +2801,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i48 (
+  DIG_D_FF_AS_1bit_i49 (
     .Set( s59 ),
     .D( s58 ),
     .C( clk ),
@@ -2354,7 +2811,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i49 (
+  DIG_D_FF_AS_1bit_i50 (
     .Set( s61 ),
     .D( s60 ),
     .C( clk ),
@@ -2364,7 +2821,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i50 (
+  DIG_D_FF_AS_1bit_i51 (
     .Set( s63 ),
     .D( s62 ),
     .C( clk ),
@@ -2374,7 +2831,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i51 (
+  DIG_D_FF_AS_1bit_i52 (
     .Set( s65 ),
     .D( s64 ),
     .C( clk ),
@@ -2384,7 +2841,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i52 (
+  DIG_D_FF_AS_1bit_i53 (
     .Set( s67 ),
     .D( s66 ),
     .C( clk ),
@@ -2394,7 +2851,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i53 (
+  DIG_D_FF_AS_1bit_i54 (
     .Set( s69 ),
     .D( s68 ),
     .C( clk ),
@@ -2404,7 +2861,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i54 (
+  DIG_D_FF_AS_1bit_i55 (
     .Set( s71 ),
     .D( s70 ),
     .C( clk ),
@@ -2414,7 +2871,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i55 (
+  DIG_D_FF_AS_1bit_i56 (
     .Set( s73 ),
     .D( s72 ),
     .C( clk ),
@@ -2424,7 +2881,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i56 (
+  DIG_D_FF_AS_1bit_i57 (
     .Set( s75 ),
     .D( s74 ),
     .C( clk ),
@@ -2434,7 +2891,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i57 (
+  DIG_D_FF_AS_1bit_i58 (
     .Set( s77 ),
     .D( s76 ),
     .C( clk ),
@@ -2444,7 +2901,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i58 (
+  DIG_D_FF_AS_1bit_i59 (
     .Set( s79 ),
     .D( s78 ),
     .C( clk ),
@@ -2454,7 +2911,7 @@ module tt_um_smallcpu (
   DIG_D_FF_AS_1bit #(
     .Default(0)
   )
-  DIG_D_FF_AS_1bit_i59 (
+  DIG_D_FF_AS_1bit_i60 (
     .Set( s81 ),
     .D( s80 ),
     .C( clk ),
@@ -2482,7 +2939,7 @@ module tt_um_smallcpu (
   DIG_JK_FF #(
     .Default(0)
   )
-  DIG_JK_FF_i60 (
+  DIG_JK_FF_i61 (
     .J( s48 ),
     .C( clk ),
     .K( s48 ),
